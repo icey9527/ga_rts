@@ -1,0 +1,23 @@
+[stats]
+type = "scout"
+name = "侦察机"
+description = "高速侦察和牵制，火力弱但索敌、机动和支援能力强。"
+max_hp = 180
+max_energy = 130
+speed = 175
+attack_damage = 10
+attack_range = 560
+attack_cooldown = 0.75
+attack_type = "ranged"
+projectile_count = 1
+burst_count = 2
+burst_delay = 0.06
+projectile_speed = 560
+radius = 10
+sprite_color = {255, 255, 150}
+
+[skill]
+type = "buff_speed"
+speed_multiplier = 1.65
+radius = 320
+duration = 6

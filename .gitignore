@@ -1,0 +1,13 @@
+# 原始素材仓库（保留在本地，不入库）
+dump/
+
+# 验证/调试临时输出
+verification*.png
+verification.txt
+verification-error.txt
+mission-pacing.txt
+pacing-results.txt
+
+# 发布产物
+release/
+*.love

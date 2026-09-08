@@ -1,0 +1,91 @@
+; Level 03 - Scout Screen
+[meta]
+name = "第三关 - 侦察屏障"
+
+[ai]
+difficulty = "normal"
+personality = "tricky"
+
+[background]
+image = "assets/backgrounds/ob1206a_1.bmp.png"
+glow = "assets/backgrounds/ob1206a_1_lum.bmp.png"
+parallax = 0.06
+scale = 0.95
+alpha = 1.00
+glow_alpha = 0.34
+
+[terrain.1]
+type = "crystal"
+x = 2400
+y = 720
+radius = 38
+height = 44
+
+[terrain.2]
+type = "asteroid"
+x = 3100
+y = 1060
+radius = 95
+height = 74
+
+[terrain.3]
+type = "debris"
+x = 3800
+y = 1420
+radius = 50
+height = 34
+
+[environment.1]
+type = "solar"
+x = 950
+y = 420
+radius = 780
+
+[environment.2]
+type = "sun"
+x = -380
+y = 160
+radius = 460
+
+[player.1]
+unit_id = "mothership"
+position = {900, 1040}
+
+[player.2]
+unit_id = "scout"
+position = {1120, 840}
+
+[player.3]
+unit_id = "fighter"
+position = {1120, 1040}
+
+[player.4]
+unit_id = "fighter"
+position = {1120, 1240}
+
+[player.5]
+unit_id = "repair"
+position = {760, 940}
+
+[enemy.1]
+unit_id = "scout"
+position = {4020, 760}
+
+[enemy.2]
+unit_id = "scout"
+position = {4240, 1040}
+
+[enemy.3]
+unit_id = "interceptor"
+position = {4020, 1320}
+
+[enemy.4]
+unit_id = "repair"
+position = {4520, 1040}
+
+[victory_conditions]
+eliminate_all = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

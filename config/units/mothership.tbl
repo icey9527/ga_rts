@@ -1,0 +1,18 @@
+[stats]
+type = "mothership"
+name = "指挥母舰"
+description = "战场核心，重装护盾、远程光束和舰队级维修。"
+max_hp = 2600
+max_energy = 240
+speed = 38
+attack_damage = 95
+attack_range = 620
+attack_cooldown = 2.6
+attack_type = "beam"
+radius = 58
+sprite_color = {100, 200, 255}
+
+[skill]
+type = "repair_all"
+heal_amount = 360
+radius = 760

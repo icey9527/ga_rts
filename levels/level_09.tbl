@@ -1,0 +1,102 @@
+; Level 09 - Crossfire
+[meta]
+name = "第九关 - 交叉火力"
+
+[ai]
+difficulty = "insane"
+personality = "tricky"
+
+[background]
+image = "assets/backgrounds/testbg_4.bmp.png"
+parallax = 0.10
+scale = 1.15
+alpha = 0.93
+
+[terrain.1]
+type = "asteroid"
+x = 1000
+y = 420
+radius = 85
+
+[terrain.2]
+type = "debris"
+x = 1180
+y = 310
+radius = 45
+
+[terrain.3]
+type = "asteroid"
+x = 1320
+y = 620
+radius = 90
+
+[terrain.4]
+type = "crystal"
+x = 1480
+y = 490
+radius = 30
+
+[environment.1]
+type = "nebula"
+x = 1260
+y = 520
+radius = 920
+
+[environment.2]
+type = "sun"
+x = -300
+y = 40
+radius = 520
+
+[environment.3]
+type = "void_rift"
+x = 1480
+y = 360
+radius = 260
+
+[player.1]
+unit_id = "mothership"
+position = {320, 520}
+
+[player.2]
+unit_id = "heavy"
+position = {470, 410}
+
+[player.3]
+unit_id = "bomber"
+position = {510, 530}
+
+[player.4]
+unit_id = "interceptor"
+position = {470, 650}
+
+[player.5]
+unit_id = "repair"
+position = {290, 460}
+
+[enemy.1]
+unit_id = "heavy"
+position = {1580, 380}
+
+[enemy.2]
+unit_id = "bomber"
+position = {1700, 500}
+
+[enemy.3]
+unit_id = "interceptor"
+position = {1580, 640}
+
+[enemy.4]
+unit_id = "fighter"
+position = {1820, 440}
+
+[enemy.5]
+unit_id = "repair"
+position = {1900, 560}
+
+[victory_conditions]
+eliminate_all = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

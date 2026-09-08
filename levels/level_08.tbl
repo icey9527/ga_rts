@@ -1,0 +1,96 @@
+; Level 08 - Siege Break
+[meta]
+name = "第八关 - 突破围攻"
+
+[ai]
+difficulty = "hard"
+personality = "aggressive"
+
+[background]
+image = "assets/backgrounds/testbg_1.bmp.png"
+parallax = 0.10
+scale = 1.15
+alpha = 0.92
+
+[terrain.1]
+type = "barrier"
+x = 1150
+y = 450
+radius = 70
+
+[terrain.2]
+type = "barrier"
+x = 1320
+y = 610
+radius = 70
+
+[terrain.3]
+type = "crystal"
+x = 1220
+y = 530
+radius = 35
+
+[environment.1]
+type = "void"
+x = 1180
+y = 500
+radius = 920
+
+[environment.2]
+type = "white_hole"
+x = 980
+y = 240
+radius = 300
+
+[environment.3]
+type = "void_rift"
+x = 1720
+y = 660
+radius = 320
+
+[player.1]
+unit_id = "mothership"
+position = {320, 520}
+
+[player.2]
+unit_id = "fighter"
+position = {470, 410}
+
+[player.3]
+unit_id = "fighter"
+position = {520, 520}
+
+[player.4]
+unit_id = "interceptor"
+position = {470, 630}
+
+[player.5]
+unit_id = "repair"
+position = {290, 460}
+
+[enemy.1]
+unit_id = "mothership"
+position = {1880, 520}
+
+[enemy.2]
+unit_id = "bomber"
+position = {1640, 400}
+
+[enemy.3]
+unit_id = "heavy"
+position = {1600, 560}
+
+[enemy.4]
+unit_id = "fighter"
+position = {1740, 670}
+
+[enemy.5]
+unit_id = "repair"
+position = {1980, 500}
+
+[victory_conditions]
+eliminate_mothership = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

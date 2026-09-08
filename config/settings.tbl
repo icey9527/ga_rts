@@ -1,0 +1,44 @@
+[screen]
+width = 1280
+height = 800
+
+[map]
+width = 9600
+height = 6720
+
+[gameplay]
+fps = 60
+edge_scroll_margin = 40
+edge_scroll_speed = 620
+supply_range = 100
+supply_rate = 80
+supply_hp_rate = 50
+energy_attack_cost = 5
+energy_repair_cost = 3
+sp_gain_per_attack = 8
+fighter_auto_range = 2200
+ai_lock_range = 2800
+
+[circle_strafe]
+radius = 180
+speed = 2.2
+
+[score]
+base_victory = 1000
+time_bonus_max = 500
+time_target = 300
+unit_survival = 100
+enemy_defeat = 50
+perfect_victory = 1000
+mothership_survival = 500
+
+[colors]
+player = {0, 200, 80}
+enemy = {255, 50, 50}
+player_alt = {80, 180, 255}
+enemy_alt = {255, 150, 50}
+repair = {0, 255, 100}
+neutral = {180, 180, 180}
+gold = {255, 215, 0}
+cyan = {0, 255, 255}
+purple = {200, 50, 255}

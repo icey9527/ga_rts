@@ -1,0 +1,54 @@
+local Cinema={}
+function Cinema.start(game,unit)
+    game.cutins=game.cutins or {}
+    for _,c in ipairs(game.cutins) do if c.unit==unit then return end end
+    game.cutins[#game.cutins+1]={unit=unit,time=0,duration=2.3}
+    if #game.cutins>3 then table.remove(game.cutins,1) end
+    game.cinematic=game.cutins[1]
+    game.skill_slow={time=math.max(1.8,(unit.skill_data and unit.skill_data.windup) or 1.1),scale=0.3,unit=unit}
+end
+function Cinema.update(game,dt)
+    local list=game.cutins or {}
+    for i=#list,1,-1 do
+        list[i].time=list[i].time+dt
+        if list[i].time>=list[i].duration or not list[i].unit.alive then table.remove(list,i) end
+    end
+    game.cinematic=list[1]
+end
+function Cinema.apply() end
+function Cinema.draw(game)
+    local g=love.graphics
+    local w,h=g.getDimensions()
+    for i,c in ipairs(game.cutins or {}) do
+        local a=math.max(0,math.min(1,c.time/0.24,(c.duration-c.time)/0.35))
+        local width=240
+        local x=w-width-18-(game.economy and game.economy.open and 264 or 0)
+        local y=72+(i-1)*104
+        local img=require("ui.pilots").standing(c.unit)
+        g.push("all")
+        g.setScissor(x-10,y,width+20,96)
+        g.setColor(0.03,0.1,0.13,0.78*a)
+        g.polygon("fill",x+16,y,x+width,y,x+width-16,y+96,x,y+96)
+        g.setColor(0.35,0.9,1,a);g.setLineWidth(2)
+        g.line(x+16,y+1,x+width,y+1);g.line(x,y+94,x+width-16,y+94)
+        if img then
+            g.setScissor(x,y,104,96)
+            local scale=160/img:getHeight()
+            g.setColor(1,1,1,a)
+            g.draw(img,x+62-(1-a)*60,y+164,0,scale,scale,img:getWidth()/2,img:getHeight())
+            g.setScissor(x-10,y,width+20,96)
+        else require("ui.pilots").draw(c.unit,x+18,y+18,58,"skill") end
+        g.setBlendMode("add")
+        for j=1,5 do
+            local yy=y+(j*21+c.time*150)%96
+            g.setColor(0.5,0.85,1,a*0.24);g.line(x+90,yy,x+width,yy-28)
+        end
+        g.setBlendMode("alpha")
+        g.setFont(require("core.fonts").get(15));g.setColor(1,1,1,a)
+        g.printf(require("ui.pilots").profile(c.unit).name,x+108,y+27,width-115)
+        g.setFont(require("core.fonts").get(12));g.setColor(0.65,0.94,1,a)
+        g.printf(require("systems.skill").label(c.unit),x+108,y+54,width-115)
+        g.pop()
+    end
+end
+return Cinema

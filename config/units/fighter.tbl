@@ -1,0 +1,25 @@
+[stats]
+type = "fighter"
+name = "多用途战机"
+description = "攻防均衡，双联短连发，适合编队缠斗。"
+max_hp = 300
+max_energy = 150
+speed = 118
+attack_damage = 20
+attack_range = 360
+attack_cooldown = 0.62
+attack_type = "ranged"
+projectile_count = 2
+burst_count = 3
+burst_delay = 0.055
+spread_angle = 0.11
+target_spread = 95
+projectile_speed = 470
+radius = 14
+sprite_color = {100, 255, 100}
+
+[skill]
+type = "rapid_fire"
+attack_multiplier = 1.7
+duration = 6
+radius = 180

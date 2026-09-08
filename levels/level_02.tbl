@@ -1,0 +1,203 @@
+; Level 02 - Fleet Clash
+[meta]
+name = "第二关 - 舰队接触"
+
+[ai]
+difficulty = "normal"
+personality = "aggressive"
+
+[background]
+image = "assets/backgrounds/ob1204a_1.bmp.png"
+glow = "assets/backgrounds/ob1204a_1_lum.bmp.png"
+parallax = 0.06
+scale = 0.95
+alpha = 1.00
+glow_alpha = 0.38
+
+[terrain.1]
+type = "asteroid"
+x = 2750
+y = 820
+radius = 90
+height = 72
+
+[terrain.2]
+type = "asteroid"
+x = 3250
+y = 1240
+radius = 120
+height = 80
+
+[terrain.3]
+type = "debris"
+x = 2350
+y = 1080
+radius = 44
+height = 34
+
+[terrain.4]
+type = "debris"
+x = 3650
+y = 980
+radius = 48
+height = 34
+
+[environment.1]
+type = "sunset"
+x = 1220
+y = 560
+radius = 860
+
+[environment.2]
+type = "void_rift"
+x = 4850
+y = 420
+radius = 360
+
+[player.1]
+unit_id = "mothership"
+position = {900, 1000}
+
+[player.2]
+unit_id = "carrier"
+position = {720, 1240}
+
+[player.3]
+unit_id = "heavy"
+position = {1180, 820}
+
+[player.4]
+unit_id = "heavy"
+position = {1180, 1180}
+
+[player.5]
+unit_id = "missile_frigate"
+position = {1360, 720}
+
+[player.6]
+unit_id = "missile_frigate"
+position = {1360, 1280}
+
+[player.7]
+unit_id = "fighter"
+position = {1540, 760}
+
+[player.8]
+unit_id = "fighter"
+position = {1540, 900}
+
+[player.9]
+unit_id = "fighter"
+position = {1540, 1100}
+
+[player.10]
+unit_id = "fighter"
+position = {1540, 1240}
+
+[player.11]
+unit_id = "interceptor"
+position = {1700, 860}
+
+[player.12]
+unit_id = "interceptor"
+position = {1700, 1140}
+
+[player.13]
+unit_id = "gunship"
+position = {1500, 1000}
+
+[player.14]
+unit_id = "repair"
+position = {760, 880}
+
+[player.15]
+unit_id = "repair"
+position = {760, 1120}
+
+[enemy.1]
+unit_id = "mothership"
+position = {4550, 1000}
+
+[enemy.2]
+unit_id = "carrier"
+position = {4760, 1240}
+
+[enemy.3]
+unit_id = "heavy"
+position = {4200, 820}
+
+[enemy.4]
+unit_id = "heavy"
+position = {4200, 1180}
+
+[enemy.5]
+unit_id = "missile_frigate"
+position = {4020, 720}
+
+[enemy.6]
+unit_id = "missile_frigate"
+position = {4020, 1280}
+
+[enemy.7]
+unit_id = "fighter"
+position = {3820, 760}
+
+[enemy.8]
+unit_id = "fighter"
+position = {3820, 900}
+
+[enemy.9]
+unit_id = "fighter"
+position = {3820, 1100}
+
+[enemy.10]
+unit_id = "fighter"
+position = {3820, 1240}
+
+[enemy.11]
+unit_id = "interceptor"
+position = {3640, 860}
+
+[enemy.12]
+unit_id = "interceptor"
+position = {3640, 1140}
+
+[enemy.13]
+unit_id = "gunship"
+position = {3920, 1000}
+
+[enemy.14]
+unit_id = "repair"
+position = {4800, 880}
+
+[enemy.15]
+unit_id = "repair"
+position = {4800, 1120}
+
+[wave.1]
+time = 22
+unit_id = "fighter"
+count = 6
+position = {5000, 720}
+spread = 220
+
+[wave.2]
+time = 38
+unit_id = "gunship"
+count = 3
+position = {5000, 1180}
+spread = 180
+
+[wave.3]
+time = 58
+unit_id = "bomber"
+count = 4
+position = {5200, 1000}
+spread = 220
+
+[victory_conditions]
+eliminate_mothership = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

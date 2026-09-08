@@ -1,0 +1,167 @@
+; Level 01 - Dawn Encounter
+[meta]
+name = "第一关 - 晨曦遭遇"
+
+[ai]
+difficulty = "easy"
+personality = "balanced"
+
+[background]
+image = "assets/backgrounds/ob1205a_1.bmp.png"
+glow = "assets/backgrounds/ob1205a_1_lum.bmp.png"
+parallax = 0.06
+scale = 0.95
+alpha = 1.00
+glow_alpha = 0.40
+
+[terrain.1]
+type = "asteroid"
+x = 2950
+y = 1000
+radius = 110
+height = 70
+
+[terrain.2]
+type = "debris"
+x = 2500
+y = 760
+radius = 42
+height = 32
+
+[terrain.3]
+type = "debris"
+x = 3400
+y = 1180
+radius = 44
+height = 32
+
+[terrain.4]
+type = "crystal"
+x = 3020
+y = 620
+radius = 28
+height = 40
+
+[environment.1]
+type = "sun"
+x = 350
+y = 200
+radius = 680
+
+[environment.2]
+type = "white_hole"
+x = 5050
+y = 520
+radius = 340
+
+[player.1]
+unit_id = "mothership"
+position = {900, 900}
+
+[player.2]
+unit_id = "fighter"
+position = {1080, 700}
+
+[player.3]
+unit_id = "fighter"
+position = {1080, 840}
+
+[player.4]
+unit_id = "fighter"
+position = {1080, 980}
+
+[player.5]
+unit_id = "fighter"
+position = {1080, 1120}
+
+[player.6]
+unit_id = "interceptor"
+position = {1260, 760}
+
+[player.7]
+unit_id = "interceptor"
+position = {1260, 1040}
+
+[player.8]
+unit_id = "gunship"
+position = {1380, 900}
+
+[player.9]
+unit_id = "bomber"
+position = {760, 1160}
+
+[player.10]
+unit_id = "repair"
+position = {760, 760}
+
+[player.11]
+unit_id = "repair"
+position = {700, 900}
+
+[enemy.1]
+unit_id = "fighter"
+position = {4100, 680}
+
+[enemy.2]
+unit_id = "fighter"
+position = {4100, 820}
+
+[enemy.3]
+unit_id = "fighter"
+position = {4100, 960}
+
+[enemy.4]
+unit_id = "fighter"
+position = {4100, 1100}
+
+[enemy.5]
+unit_id = "interceptor"
+position = {3920, 760}
+
+[enemy.6]
+unit_id = "interceptor"
+position = {3920, 1040}
+
+[enemy.7]
+unit_id = "gunship"
+position = {3760, 900}
+
+[enemy.8]
+unit_id = "bomber"
+position = {4380, 900}
+
+[enemy.9]
+unit_id = "repair"
+position = {4560, 820}
+
+[enemy.10]
+unit_id = "repair"
+position = {4560, 980}
+
+[wave.1]
+time = 18
+unit_id = "fighter"
+count = 5
+position = {4700, 760}
+spread = 180
+
+[wave.2]
+time = 34
+unit_id = "interceptor"
+count = 4
+position = {4700, 1120}
+spread = 160
+
+[wave.3]
+time = 52
+unit_id = "missile_frigate"
+count = 2
+position = {4920, 940}
+spread = 140
+
+[victory_conditions]
+eliminate_all = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

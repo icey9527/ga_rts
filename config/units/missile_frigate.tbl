@@ -1,0 +1,26 @@
+[stats]
+type = "missile_frigate"
+name = "导弹护卫舰"
+description = "持续导弹平台，单次多枚追踪弹压制远距离目标。"
+max_hp = 520
+max_energy = 150
+speed = 66
+attack_damage = 45
+attack_range = 840
+attack_cooldown = 2.35
+attack_type = "missile"
+projectile_count = 5
+burst_count = 2
+burst_delay = 0.14
+spread_angle = 0.24
+projectile_speed = 250
+splash_radius = 65
+radius = 24
+sprite_color = {180, 220, 255}
+
+[skill]
+type = "missile_barrage"
+count = 14
+damage = 48
+range = 980
+projectile_speed = 285

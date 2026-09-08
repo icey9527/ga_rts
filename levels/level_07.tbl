@@ -1,0 +1,98 @@
+; Level 07 - Asteroid Gate
+[meta]
+name = "第七关 - 小行星门"
+
+[ai]
+difficulty = "hard"
+personality = "balanced"
+
+[background]
+image = "assets/backgrounds/testbg_5.bmp.png"
+parallax = 0.08
+scale = 1.11
+alpha = 0.94
+
+[terrain.1]
+type = "asteroid"
+x = 980
+y = 360
+radius = 100
+
+[terrain.2]
+type = "asteroid"
+x = 1160
+y = 520
+radius = 110
+
+[terrain.3]
+type = "asteroid"
+x = 1360
+y = 690
+radius = 95
+
+[terrain.4]
+type = "debris"
+x = 1240
+y = 330
+radius = 40
+
+[environment.1]
+type = "sunset"
+x = 1180
+y = 560
+radius = 880
+
+[environment.2]
+type = "sun"
+x = 250
+y = -360
+radius = 430
+
+[environment.3]
+type = "void_rift"
+x = 1640
+y = 620
+radius = 280
+
+[player.1]
+unit_id = "mothership"
+position = {330, 520}
+
+[player.2]
+unit_id = "scout"
+position = {480, 370}
+
+[player.3]
+unit_id = "heavy"
+position = {500, 510}
+
+[player.4]
+unit_id = "bomber"
+position = {460, 640}
+
+[player.5]
+unit_id = "repair"
+position = {300, 460}
+
+[enemy.1]
+unit_id = "heavy"
+position = {1650, 420}
+
+[enemy.2]
+unit_id = "bomber"
+position = {1740, 540}
+
+[enemy.3]
+unit_id = "interceptor"
+position = {1650, 660}
+
+[enemy.4]
+unit_id = "repair"
+position = {1900, 520}
+
+[victory_conditions]
+eliminate_all = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

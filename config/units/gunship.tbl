@@ -1,0 +1,24 @@
+[stats]
+type = "gunship"
+name = "散弹炮艇"
+description = "中近距离扇形散弹，一轮覆盖多个目标。"
+max_hp = 360
+max_energy = 140
+speed = 92
+attack_damage = 12
+attack_range = 340
+attack_cooldown = 0.95
+attack_type = "ranged"
+projectile_count = 7
+burst_count = 2
+burst_delay = 0.08
+spread_angle = 0.34
+target_spread = 220
+projectile_speed = 430
+radius = 18
+sprite_color = {255, 170, 80}
+
+[skill]
+type = "damage_aoe"
+damage = 120
+radius = 220

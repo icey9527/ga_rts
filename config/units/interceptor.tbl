@@ -1,0 +1,25 @@
+[stats]
+type = "interceptor"
+name = "拦截机"
+description = "近距离机关炮，低单发、高射速、强压制。"
+max_hp = 240
+max_energy = 150
+speed = 150
+attack_damage = 9
+attack_range = 260
+attack_cooldown = 0.38
+attack_type = "ranged"
+projectile_count = 4
+burst_count = 4
+burst_delay = 0.035
+spread_angle = 0.18
+target_spread = 120
+projectile_speed = 560
+radius = 11
+sprite_color = {255, 200, 100}
+
+[skill]
+type = "dash_strike"
+windup = 0.7
+damage = 380
+range = 650

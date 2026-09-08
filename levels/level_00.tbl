@@ -1,0 +1,27 @@
+[meta]
+name = "训练 - 可可的指挥课堂"
+tutorial = true
+
+[ai]
+difficulty = "easy"
+personality = "aggressive"
+
+[background]
+image = "assets/backgrounds/ob1205a_1.bmp.png"
+alpha = 0.65
+
+[player.1]
+unit_id = "mothership"
+position = {1000, 1000}
+
+[player.2]
+unit_id = "fighter"
+position = {1220, 900}
+
+[player.3]
+unit_id = "repair"
+position = {1080, 1150}
+
+[enemy.1]
+unit_id = "heavy"
+position = {2050, 1000}

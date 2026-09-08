@@ -1,0 +1,92 @@
+; Level 06 - Enemy Carrier
+[meta]
+name = "第六关 - 敌方母舰"
+
+[ai]
+difficulty = "hard"
+personality = "defensive"
+
+[background]
+image = "assets/backgrounds/testbg_4.bmp.png"
+parallax = 0.08
+scale = 1.11
+alpha = 0.94
+
+[terrain.1]
+type = "asteroid"
+x = 1050
+y = 390
+radius = 75
+
+[terrain.2]
+type = "asteroid"
+x = 1280
+y = 610
+radius = 95
+
+[terrain.3]
+type = "crystal"
+x = 1180
+y = 500
+radius = 30
+
+[environment.1]
+type = "solar"
+x = 1220
+y = 520
+radius = 900
+
+[environment.2]
+type = "sun"
+x = -520
+y = -120
+radius = 560
+
+[environment.3]
+type = "white_hole"
+x = 1760
+y = 720
+radius = 280
+
+[player.1]
+unit_id = "mothership"
+position = {320, 520}
+
+[player.2]
+unit_id = "heavy"
+position = {470, 430}
+
+[player.3]
+unit_id = "fighter"
+position = {520, 520}
+
+[player.4]
+unit_id = "fighter"
+position = {470, 620}
+
+[player.5]
+unit_id = "repair"
+position = {300, 450}
+
+[enemy.1]
+unit_id = "mothership"
+position = {1850, 520}
+
+[enemy.2]
+unit_id = "fighter"
+position = {1660, 420}
+
+[enemy.3]
+unit_id = "heavy"
+position = {1640, 600}
+
+[enemy.4]
+unit_id = "repair"
+position = {1940, 480}
+
+[victory_conditions]
+eliminate_mothership = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

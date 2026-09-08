@@ -1,0 +1,12 @@
+[stats]
+type = "collector"
+name = "资源采集站"
+description = "母舰附近的资源处理站，持续提供资源。"
+max_hp = 420
+max_energy = 0
+speed = 0
+attack_damage = 0
+attack_range = 0
+attack_cooldown = 1
+radius = 25
+z = 120

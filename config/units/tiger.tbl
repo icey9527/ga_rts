@@ -1,0 +1,17 @@
+[stats]
+type = "tiger"
+name = "虎式重击机"
+max_hp = 1100
+max_energy = 180
+speed = 54
+attack_damage = 280
+attack_range = 660
+attack_cooldown = 5.8
+attack_type = "artillery"
+projectile_speed = 155
+splash_radius = 75
+radius = 35
+[skill]
+type = "shield"
+shield_amount = 1200
+duration = 12

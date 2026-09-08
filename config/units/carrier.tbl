@@ -1,0 +1,25 @@
+[stats]
+type = "carrier"
+name = "轻型航母"
+description = "厚血支援舰，慢速远程火力和舰队攻击增益。"
+max_hp = 980
+max_energy = 200
+speed = 42
+attack_damage = 18
+attack_range = 680
+attack_cooldown = 1.25
+attack_type = "ranged"
+projectile_count = 4
+burst_count = 2
+burst_delay = 0.12
+spread_angle = 0.20
+target_spread = 180
+projectile_speed = 390
+radius = 38
+sprite_color = {120, 220, 190}
+
+[skill]
+type = "buff_attack"
+attack_multiplier = 1.45
+radius = 520
+duration = 8

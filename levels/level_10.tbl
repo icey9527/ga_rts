@@ -1,0 +1,116 @@
+; Level 10 - Final Command
+[meta]
+name = "第十关 - 最终指挥"
+
+[ai]
+difficulty = "insane"
+personality = "aggressive"
+
+[background]
+image = "assets/backgrounds/testbg_5.bmp.png"
+parallax = 0.12
+scale = 1.16
+alpha = 0.93
+
+[terrain.1]
+type = "asteroid"
+x = 980
+y = 360
+radius = 90
+
+[terrain.2]
+type = "barrier"
+x = 1180
+y = 520
+radius = 75
+
+[terrain.3]
+type = "asteroid"
+x = 1400
+y = 700
+radius = 95
+
+[terrain.4]
+type = "crystal"
+x = 1300
+y = 390
+radius = 35
+
+[environment.1]
+type = "solar"
+x = 1180
+y = 520
+radius = 920
+
+[environment.2]
+type = "sun"
+x = -520
+y = -260
+radius = 620
+
+[environment.3]
+type = "white_hole"
+x = 1450
+y = 290
+radius = 280
+
+[environment.4]
+type = "void_rift"
+x = 1760
+y = 720
+radius = 330
+
+[player.1]
+unit_id = "mothership"
+position = {300, 520}
+
+[player.2]
+unit_id = "heavy"
+position = {450, 400}
+
+[player.3]
+unit_id = "bomber"
+position = {510, 500}
+
+[player.4]
+unit_id = "fighter"
+position = {470, 610}
+
+[player.5]
+unit_id = "interceptor"
+position = {560, 650}
+
+[player.6]
+unit_id = "repair"
+position = {280, 450}
+
+[enemy.1]
+unit_id = "mothership"
+position = {1900, 520}
+
+[enemy.2]
+unit_id = "heavy"
+position = {1640, 380}
+
+[enemy.3]
+unit_id = "bomber"
+position = {1700, 500}
+
+[enemy.4]
+unit_id = "interceptor"
+position = {1640, 640}
+
+[enemy.5]
+unit_id = "fighter"
+position = {1800, 700}
+
+[enemy.6]
+unit_id = "repair"
+position = {2000, 500}
+
+[victory_conditions]
+eliminate_mothership = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

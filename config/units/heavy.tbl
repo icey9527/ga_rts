@@ -1,0 +1,24 @@
+[stats]
+type = "heavy"
+name = "重型护卫舰"
+description = "中距离炮击和抗线单位，慢但可靠。"
+max_hp = 720
+max_energy = 120
+speed = 58
+attack_damage = 58
+attack_range = 520
+attack_cooldown = 1.65
+attack_type = "artillery"
+projectile_count = 2
+burst_count = 1
+spread_angle = 0.24
+target_spread = 180
+projectile_speed = 230
+splash_radius = 90
+radius = 30
+sprite_color = {150, 150, 255}
+
+[skill]
+type = "shield"
+shield_amount = 320
+duration = 8

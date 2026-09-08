@@ -1,0 +1,19 @@
+[stats]
+type = "sniper"
+name = "远程定点机"
+max_hp = 420
+max_energy = 180
+speed = 90
+attack_damage = 210
+attack_range = 1350
+attack_cooldown = 4.8
+attack_type = "ranged"
+projectile_speed = 380
+accuracy = 0.95
+radius = 19
+[skill]
+type = "charge_beam"
+windup = 1.8
+range = 1800
+damage = 650
+width = 32

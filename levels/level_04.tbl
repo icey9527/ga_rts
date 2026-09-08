@@ -1,0 +1,82 @@
+; Level 04 - Bomber Line
+[meta]
+name = "第四关 - 轰炸线"
+
+[ai]
+difficulty = "normal"
+personality = "aggressive"
+
+[background]
+image = "assets/backgrounds/testbg_2.bmp.png"
+parallax = 0.10
+scale = 1.12
+alpha = 0.94
+
+[terrain.1]
+type = "asteroid"
+x = 1120
+y = 430
+radius = 95
+
+[terrain.2]
+type = "barrier"
+x = 1280
+y = 610
+radius = 60
+
+[terrain.3]
+type = "debris"
+x = 980
+y = 650
+radius = 35
+
+[environment.1]
+type = "void"
+x = 1200
+y = 520
+radius = 900
+
+[environment.2]
+type = "void_rift"
+x = 1300
+y = 420
+radius = 330
+
+[player.1]
+unit_id = "mothership"
+position = {350, 520}
+
+[player.2]
+unit_id = "fighter"
+position = {480, 420}
+
+[player.3]
+unit_id = "heavy"
+position = {500, 550}
+
+[player.4]
+unit_id = "repair"
+position = {330, 460}
+
+[enemy.1]
+unit_id = "bomber"
+position = {1650, 450}
+
+[enemy.2]
+unit_id = "fighter"
+position = {1580, 560}
+
+[enemy.3]
+unit_id = "fighter"
+position = {1740, 620}
+
+[enemy.4]
+unit_id = "repair"
+position = {1880, 520}
+
+[victory_conditions]
+eliminate_all = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

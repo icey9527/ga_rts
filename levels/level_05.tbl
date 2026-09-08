@@ -1,0 +1,86 @@
+; Level 05 - Interception
+[meta]
+name = "第五关 - 拦截作战"
+
+[ai]
+difficulty = "hard"
+personality = "tricky"
+
+[background]
+image = "assets/backgrounds/testbg_3.bmp.png"
+parallax = 0.12
+scale = 1.13
+alpha = 0.95
+
+[terrain.1]
+type = "debris"
+x = 950
+y = 420
+radius = 40
+
+[terrain.2]
+type = "asteroid"
+x = 1180
+y = 540
+radius = 80
+
+[terrain.3]
+type = "debris"
+x = 1430
+y = 430
+radius = 40
+
+[environment.1]
+type = "nebula"
+x = 1180
+y = 500
+radius = 820
+
+[environment.2]
+type = "white_hole"
+x = 1450
+y = 640
+radius = 260
+
+[player.1]
+unit_id = "mothership"
+position = {340, 520}
+
+[player.2]
+unit_id = "interceptor"
+position = {480, 430}
+
+[player.3]
+unit_id = "fighter"
+position = {500, 560}
+
+[player.4]
+unit_id = "scout"
+position = {430, 650}
+
+[player.5]
+unit_id = "repair"
+position = {310, 460}
+
+[enemy.1]
+unit_id = "interceptor"
+position = {1600, 420}
+
+[enemy.2]
+unit_id = "interceptor"
+position = {1680, 540}
+
+[enemy.3]
+unit_id = "bomber"
+position = {1780, 620}
+
+[enemy.4]
+unit_id = "repair"
+position = {1900, 520}
+
+[victory_conditions]
+eliminate_all = true
+
+[defeat_conditions]
+lose_all = true
+lose_mothership = true

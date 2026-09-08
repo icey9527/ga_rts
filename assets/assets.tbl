@@ -1,0 +1,21 @@
+; Local GAELpak asset manifest. Paths are relative to the Love2D project root.
+
+[backgrounds]
+nebula_01 = "assets/backgrounds/testbg_0.bmp.png"
+nebula_02 = "assets/backgrounds/testbg_1.bmp.png"
+solar_01 = "assets/backgrounds/testbg_2.bmp.png"
+sunset_01 = "assets/backgrounds/testbg_3.bmp.png"
+void_01 = "assets/backgrounds/testbg_4.bmp.png"
+void_02 = "assets/backgrounds/testbg_5.bmp.png"
+cloud_01 = "assets/backgrounds/ou231e_0.bmp.png"
+cloud_02 = "assets/backgrounds/ou232e_0.bmp.png"
+rift_01 = "assets/backgrounds/ou237e_0.bmp.png"
+deep_01 = "assets/backgrounds/ou241e_0.bmp.png"
+
+[effects]
+thruster_0 = "assets/effects/thrusterg0.dds"
+thruster_1 = "assets/effects/thrusterg1.dds"
+thruster_2 = "assets/effects/thrusterg2.dds"
+thruster_3 = "assets/effects/thrusterg3.dds"
+smoke_0 = "assets/effects/thrustergs0.dds"
+smoke_1 = "assets/effects/thrustergs1.dds"

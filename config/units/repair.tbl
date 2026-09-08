@@ -1,0 +1,18 @@
+[stats]
+type = "repair"
+name = "维修机"
+description = "专职维修和补给支援，火力极弱但能显著延长舰队续航。"
+max_hp = 260
+max_energy = 180
+speed = 102
+attack_damage = 12
+attack_range = 280
+attack_cooldown = 1.8
+attack_type = "ranged"
+radius = 14
+repair_range = 240
+repair_rate = 48
+sprite_color = {50, 255, 100}
+
+[skill]
+type = "fleet_heal"

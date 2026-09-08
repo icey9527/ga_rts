@@ -1,0 +1,18 @@
+[stats]
+type = "artillery"
+name = "远程区域轰击机"
+max_hp = 460
+max_energy = 180
+speed = 74
+attack_damage = 165
+attack_range = 1200
+attack_cooldown = 4.2
+attack_type = "artillery"
+projectile_speed = 180
+splash_radius = 180
+radius = 25
+[skill]
+type = "orbital_bombardment"
+damage = 350
+radius = 300
+range = 1500
