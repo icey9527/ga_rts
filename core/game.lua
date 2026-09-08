@@ -248,6 +248,7 @@ function Game:update(dt,real_dt)
                     if n==1 then u.character_id=w.character_id end
                     self:add_unit(u)
                 end
+                require("systems.audio").play("reinforce")
                 table.remove(self.pending_waves, i)
             end
         end

@@ -51,6 +51,8 @@ function SelectionPanel.draw(game)
         love.graphics.setFont(Fonts.get(12))
         love.graphics.setColor(0.70, 0.78, 0.88)
         love.graphics.print(string.format("%s | 高度 %.0f | %s", u.type_name or u.name, u.z or 0, state), x + 18, y + 38)
+        -- 面板右上角显示该单位真实驾驶员的小头像（含敌方查看，纯头像无边框）。
+        require("ui.pilots").draw(u, x + panel_w - 54, y + 10, 42, "idle", "bare")
 
         bar(x + 18, y + 66, panel_w - 36, 9, u.hp / u.max_hp, 0.85, 0.22, 0.18)
         bar(x + 18, y + 86, panel_w - 36, 8, u.max_energy > 0 and u.energy / u.max_energy or 0, 0.20, 0.48, 0.95)

@@ -12,6 +12,8 @@ function MainMenu.new(level_names, high_scores)
         visible = 7,
         list_y = 148,
         clock = 0,
+        confirm = false,
+        confirm_rects = {},
     }
     setmetatable(self, {__index = MainMenu})
     return self
@@ -55,7 +57,15 @@ function MainMenu:update(dt)
 end
 
 function MainMenu:keypressed(key)
-    if key == "escape" then return "quit" end
+    -- ESC 不再直接退出：先弹确认，回车才真正退出，防止误触。
+    if key == "escape" then
+        self.confirm = not self.confirm
+        return nil
+    end
+    if self.confirm then
+        if key == "return" or key == "space" then return "quit" end
+        return nil
+    end
     if key == "return" or key == "space" then
         if #self.level_names > 0 then return "start", self.selected end
     elseif key == "up" then
@@ -75,6 +85,12 @@ end
 
 function MainMenu:mousepressed(mx, my, button)
     if button ~= 1 then return nil end
+    if self.confirm then
+        local yes,no=self.confirm_rects[1],self.confirm_rects[2]
+        if yes and mx>=yes[1] and mx<=yes[1]+yes[3] and my>=yes[2] and my<=yes[2]+yes[4] then return "quit" end
+        self.confirm=false
+        return nil
+    end
     local visible_h = self.visible * self.item_h
     if my >= self.list_y and my <= self.list_y + visible_h and mx >= 150 and mx <= love.graphics.getWidth() - 150 then
         local idx = math.floor((my - self.list_y + self.scroll) / self.item_h) + 1
@@ -149,7 +165,47 @@ function MainMenu:draw()
 
     love.graphics.setFont(font_sm)
     love.graphics.setColor(0.55, 0.60, 0.70)
-    love.graphics.printf("↑↓ 选择 | 回车/点击 开始 | ESC 退出", 0, h - 42, w, "center")
+    love.graphics.printf("↑↓ 选择 | 回车/点击 开始 | ESC 退出游戏（需确认）", 0, h - 42, w, "center")
+
+    -- 标题徽章：取自原始素材库，作装饰水印。
+    local logo = require("ui.pilots").image("assets/ui/title_logo.png")
+    if logo then
+        love.graphics.push("all")
+        love.graphics.setColor(1, 1, 1, 0.16)
+        local lw = math.min(430, w * 0.34)
+        love.graphics.draw(logo, w - lw * 0.42 - 24, h * 0.30, 0, lw / logo:getWidth(), lw / logo:getWidth(), logo:getWidth() / 2, logo:getHeight() / 2)
+        love.graphics.pop()
+    end
+
+    if self.confirm then
+        local pw, ph = 380, 150
+        local px, py = (w - pw) / 2, (h - ph) / 2
+        love.graphics.setColor(0, 0, 0, 0.55)
+        love.graphics.rectangle("fill", 0, 0, w, h)
+        love.graphics.setColor(0.04, 0.08, 0.14, 0.97)
+        love.graphics.rectangle("fill", px, py, pw, ph, 12, 12)
+        love.graphics.setColor(0.35, 0.62, 0.95, 0.9)
+        love.graphics.rectangle("line", px, py, pw, ph, 12, 12)
+        love.graphics.setFont(font_med)
+        love.graphics.setColor(0.95, 0.95, 1)
+        love.graphics.print("确认退出游戏？", px + 28, py + 24)
+        love.graphics.setFont(font_sm)
+        love.graphics.setColor(0.7, 0.76, 0.88)
+        love.graphics.print("进行中的战斗不会保存。", px + 28, py + 56)
+        local by, bw, bh = py + 92, 140, 38
+        self.confirm_rects = {
+            {px + 40, by, bw, bh},
+            {px + pw - bw - 40, by, bw, bh},
+        }
+        love.graphics.setColor(0.85, 0.30, 0.26, 0.95)
+        love.graphics.rectangle("fill", self.confirm_rects[1][1], by, bw, bh, 8, 8)
+        love.graphics.setColor(0.22, 0.50, 0.30, 0.95)
+        love.graphics.rectangle("fill", self.confirm_rects[2][1], by, bw, bh, 8, 8)
+        love.graphics.setFont(font_med)
+        love.graphics.setColor(1, 1, 1)
+        love.graphics.printf("退出", self.confirm_rects[1][1], by + 9, bw, "center")
+        love.graphics.printf("取消", self.confirm_rects[2][1], by + 9, bw, "center")
+    end
     love.graphics.setColor(1, 1, 1, 1)
 end
 

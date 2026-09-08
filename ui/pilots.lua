@@ -17,8 +17,21 @@ end
 function Pilots.assign(unit)
     if unit.character_id~=nil and Pilots.available()[unit.character_id] then return end
     local pool=profiles[unit.unit_type] or profiles.fighter
+    -- 地图内同一角色只出现一次：已上场的角色不再分配给随机单位。
+    local used={}
+    local g=unit.game
+    if g then
+        for _,other in ipairs(g.units) do
+            if other~=unit and other.alive and other.character_id then used[other.character_id]=true end
+        end
+    end
     local candidates={}
-    for _,id in ipairs(pool) do if Pilots.available()[id] then candidates[#candidates+1]=id end end
+    for _,id in ipairs(pool) do
+        if Pilots.available()[id] and not used[id] then candidates[#candidates+1]=id end
+    end
+    if #candidates==0 then
+        for _,id in ipairs(pool) do if Pilots.available()[id] then candidates[#candidates+1]=id end end
+    end
     assert(#candidates>0,"No local portrait for ship role")
     unit.character_id=candidates[((unit.id or 1)-1)%#candidates+1]
 end

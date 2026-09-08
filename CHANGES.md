@@ -1,6 +1,21 @@
 # Tactical Experience Update
 
-## Current Revision: Missions, Skills, and Maintenance
+## Current Revision: Comms Slots, Enemy Logistics, and Cut-ins
+
+- Squadron-dependent advisors: picking the Takut squad swaps Lester into the tactical slot and Almo into the logistics slot, with Coco and Noah moving to the side channels. Economy and advisory lines are authored per personality in `config/economy_lines.lua`.
+- Map-wide character uniqueness: random reinforcements, production and recruits skip pilots already on the field, falling back to reuse only when a role pool is exhausted.
+- Menu safety: ESC in the main menu opens a quit confirmation dialog (with buttons and keyboard paths), and ESC in battle pauses first and requires a second press to leave for the menu. The menu uses the original title emblem (`assets/ui/title_logo.png`) as decoration.
+- Sound coverage expanded: unit destruction, low-armor warning, production/research completion, reinforcement arrival, invalid order buzz, victory and defeat stingers. New files come from the raw `dump` audio pool and can be swapped by editing `config/audio.lua`.
+
+- Instructor, researcher and squad logistics channels are independent FIFO slots (`systems/comms_slots.lua`): messages queue per slot instead of overwriting. Coco no longer opens every mission with a self-introduction, and her panel yields completely while Noah teaches the logistics steps, which fixes the duplicated tutorial display.
+- The Takut squad has a real division of labor. Lester (021) delivers formal guidance and formation criticism, Almo (026) provides energetic encouragement, and Takut (020) appears in story and chatter only. New exchanges cover the lazy-commander banter between Takut and Lester plus squad teaching between Lester and Almo.
+- Enemy logistics officer Solbe (074) joins with a red comms bubble, red avatar frame, hostile lines and threshold reactions to enemy losses and player setbacks. Friendly and enemy logistics join cheers, criticism and mid-battle reactions through their own slots.
+- Enemy special attacks trigger side cut-ins too, using a smaller red panel with independent scan-line effects. Slow motion applies to both factions, and cut-ins shift left with the fleet management panel using one shared offset.
+- The mothership status panel shows Kazuya's portrait, and Noah's standing art is cropped to the upper body so the researcher slot matches the instructor's scale.
+- Mission lifecycle regression checks cover single-fire interludes, idempotent finish scenes, intro skipping, slot queue order and enemy faction slots. `--verify --logistics-shot` captures the three logistics slots.
+- `assets/backgrounds` was slimmed from 205 MB to 9 MB. The 156 unused files (unused frames, raw BMP duplicates, unused glow maps) are archived under `dump/raw/backgrounds` with a manifest; the runtime only ever referenced eleven images plus the static menu backdrop.
+
+## Missions, Skills, and Maintenance
 
 - Map portraits are always visible for living ships; the lower pointer faces the ship. Friendly frames are gold/white and enemy frames are red. Clicking a map portrait selects or inspects its ship; enemy inspection no longer issues a left-click attack.
 - Supply now has an explicit undocking stage that clears stale targets and moves each unit away from the mother ship.

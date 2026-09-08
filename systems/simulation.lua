@@ -23,6 +23,7 @@ function Sim.deploy(game,choice,formation)
         end
     end
     game.reports={}
+    require("systems.advisor").apply_squad(game)
     require("systems.objectives").start(game)
     if game.advisor then game.advisor.enemy_count=#game:get_enemy_units(game.player_team) end
 end

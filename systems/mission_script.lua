@@ -54,7 +54,8 @@ function Mission.current(game)
     local unit
     for _,u in ipairs(game.units) do if u.character_id==id then unit=u; break end end
     if not unit then
-        m.actors[id]=m.actors[id] or {character_id=id,unit_type=id==22 and "researcher" or "instructor",team=game.player_team,game=game}
+        -- 通讯演员需要 game 引用与阵营：头像红边和台词侧别都按此判定。
+        m.actors[id]=m.actors[id] or {character_id=id,unit_type=(id==22 or id==74) and "researcher" or "instructor",team=id==74 and 1 or game.player_team,game=game}
         unit=m.actors[id]
     end
     return line,unit,m.age

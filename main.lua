@@ -134,6 +134,7 @@ local function calc_score()
 end
 
 local function rebuild_menu()
+    if game then game.menu_confirm = nil end
     level_names = {}
     level_scores = {}
 
@@ -290,6 +291,19 @@ function love.load(args)
             Advisor.update(game,2.5)
             _G.VERIFY_NAME="verification-tutorial.png"
         end
+        if arg=="--tutorial-noah" then
+            -- 教学第六步：诺阿接手后勤课程的常驻状态，验证立绘站位未漂移。
+            start_level(1)
+            game:pause()
+            require("systems.mission_script").advance(game,true)
+            local a=game.advisor
+            a.step=6
+            local Slots=require("systems.comms_slots")
+            Slots.clear(a)
+            Slots.replace(game.researcher,require("levels.scripts.level_00").training[6].text,"idle",6)
+            Advisor.update(game,1.5)
+            _G.VERIFY_NAME="verification-tutorial-noah.png"
+        end
         if arg=="--radio" then
             command_feedbacks={}
             local units=game:get_units_by_team(game.player_team)
@@ -307,6 +321,21 @@ function love.load(args)
             Cinema.start(game,u)
             game.cinematic.time=0.7
             _G.VERIFY_NAME="verification-skill.png"
+        end
+        if arg=="--logistics-shot" then
+            -- 塔克特队顾问替换回归截图：雷斯特接战术位、阿尔茉接后勤位，
+            -- 可可/诺阿转入侧翼频道，敌方索尔贝红色垫底。
+            local Slots=require("systems.comms_slots")
+            local L=game.logistics
+            game.chosen_squad=2
+            require("systems.advisor").apply_squad(game)
+            Slots.replace(L.tact,"卡兹亚君，队形散了才会被抓住破绽。复盘时逐条分析。","failed",9)
+            Slots.replace(L.almo,"目标击破。战斗数据已记录，保持这个节奏。","praise",9)
+            Slots.replace(L.enemy,"就这点本事？你们的失误，我们全都记录在案。","attack",9)
+            Slots.replace(L.player,"增援、建设、研究——想把资源花在哪里？","idle",9)
+            Comms.update(game,1.4)
+            Advisor.update(game,1.4)
+            _G.VERIFY_NAME="verification-logistics.png"
         end
         if arg=="--mixed-radio" then
             local enemy=game:get_enemy_units(game.player_team)[2]
@@ -333,6 +362,7 @@ function love.load(args)
             _G.VERIFY_NAME="verification-shield.png"
         end
         if arg=="--menu-shot" then game_state="menu"; _G.VERIFY_NAME="verification-menu.png" end
+        if arg=="--audio-diag" then _G.AUDIO_DIAG={frame=0} end
         if arg=="--pacing" then require("tools.verify").pacing() end
         if arg=="--mission-pacing" then require("tools.verify_missions").pacing() end
         if arg=="--economy-shot" then
@@ -385,6 +415,35 @@ end
 
 function love.update(dt)
     dt = math.min(dt, 0.05)
+    -- 音频诊断：--audio-diag 启动时把 love.audio 实际状态写入 audio-diag.txt。
+    if _G.AUDIO_DIAG then
+        local d=_G.AUDIO_DIAG
+        d.frame=d.frame+1
+        if d.frame==5 and love.audio then
+            local ok,src=pcall(love.audio.newSource,"assets/se/ui-confirm.ogg","static")
+            d.load_ok=ok
+            if ok then src:setLooping(true); src:setVolume(0.8); src:play(); d.src=src end
+        end
+        if d.frame>=40 then
+            local f=assert(io.open(love.filesystem.getSource().."/audio-diag.txt","w"))
+            f:write(string.format(
+                "has_audio=%s load_ok=%s playing=%s\n",
+                tostring(love.audio~=nil),tostring(d.load_ok),tostring(d.src and d.src:isPlaying())))
+            f:close()
+            love.event.quit()
+        end
+        return
+    end
+    -- 背景音乐按状态切换：菜单/简报用标题曲，战斗用战斗曲，结算用胜负曲。
+    if game_state=="menu" or game_state=="deployment" or game_state=="briefing" then
+        require("systems.bgm").play("menu")
+    elseif game_state=="playing" then
+        require("systems.bgm").play("battle")
+    elseif game_state=="victory" then
+        require("systems.bgm").play("victory",false)
+    elseif game_state=="defeat" then
+        require("systems.bgm").play("defeat",false)
+    end
     if game_state=="deployment" then return end
     if game_state=="briefing" then
         local b=game.briefing
@@ -430,9 +489,11 @@ function love.update(dt)
             Mission.finish(game,"victory")
             calc_score()
             save_high_score()
+            require("systems.audio").play("victory")
             game_state = "victory"
         elseif LevelManager.check_defeat(game) then
             Mission.finish(game,"defeat")
+            require("systems.audio").play("defeat")
             game_state = "defeat"
         end
     end
@@ -578,6 +639,21 @@ local function draw_playing()
     if not game.cinematic and not game.skill_focus then draw_command_indicators() end
     unit_panel:draw(game)
     HUD.draw(game, current_level_name, command_mode)
+    if game.menu_confirm and game:is_paused() then
+        local w,h=love.graphics.getWidth(),love.graphics.getHeight()
+        love.graphics.setColor(0,0,0,0.45)
+        love.graphics.rectangle("fill",0,0,w,h)
+        love.graphics.setColor(0.04,0.08,0.14,0.95)
+        love.graphics.rectangle("fill",w/2-250,h/2-52,500,104,12,12)
+        love.graphics.setColor(0.35,0.62,0.95,0.9)
+        love.graphics.rectangle("line",w/2-250,h/2-52,500,104,12,12)
+        love.graphics.setFont(require("core.fonts").get(19))
+        love.graphics.setColor(1,1,1)
+        love.graphics.printf("已暂停：再按一次 ESC 返回主菜单",0,h/2-30,w,"center")
+        love.graphics.setFont(require("core.fonts").get(14))
+        love.graphics.setColor(0.75,0.8,0.9)
+        love.graphics.printf("空格继续游戏 · 战斗不会因返回菜单而保存",0,h/2+4,w,"center")
+    end
     SelectionPanel.draw(game)
     if not Mission.busy(game) and not game.cinematic then Comms.draw(game) end
     if not game.cinematic and not Mission.busy(game) then Advisor.draw(game) end
@@ -720,7 +796,8 @@ function love.mousepressed(mx, my, button)
     if game_state == "menu" then
         if menu then
             local action, index = menu:mousepressed(mx, my, button)
-            if action == "start" then start_level(index) end
+            if action == "start" then require("systems.audio").play("confirm"); start_level(index)
+            elseif action == "quit" then love.event.quit() end
         end
         return
     end
@@ -902,6 +979,7 @@ function love.keypressed(key)
         if menu then
             local action, index = menu:keypressed(key)
             if action == "start" then
+                require("systems.audio").play("confirm")
                 start_level(index)
             elseif action == "quit" then
                 love.event.quit()
@@ -929,15 +1007,21 @@ function love.keypressed(key)
             cancel_command()
         elseif context_menu.active or global_menu.active then
             hide_all_menus()
-        else
+        elseif game.menu_confirm then
+            -- 第二次 ESC 才真正返回主菜单，防止战斗中误触。
+            require("systems.audio").play("confirm")
+            game.menu_confirm = nil
             game_state = "menu"
             rebuild_menu()
+        else
+            if not game:is_paused() then game:pause() end
+            game.menu_confirm = true
         end
     elseif key == "tab" then
         unit_panel:toggle()
     elseif key == "space" then
         if command_mode=="normal" and not context_menu.active and not global_menu.active then
-            if game:is_paused() then game:resume() else game:pause() end
+            if game:is_paused() then game:resume(); game.menu_confirm=nil else game:pause() end
         end
     end
 end

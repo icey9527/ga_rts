@@ -38,6 +38,7 @@ function Orders.issue(game,units,action,target,x,y)
     end
     if accepted==0 then
         game.bad_orders=(game.bad_orders or 0)+1
+        require("systems.audio").play("error")
         if game.bad_orders%3==0 then require("systems.advisor").say(game,"连续三次无效指令。卡兹亚，先看清目标，别拿大家的命试按钮。","failed") end
     end
     return accepted

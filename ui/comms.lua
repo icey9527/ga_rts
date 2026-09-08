@@ -19,7 +19,7 @@ function Comms.contains(game,mx,my)
     local x,w=bounds(game)
     return #(game.reports or {})>0 and mx>=x and mx<=x+w and my>=48 and my<=48+#game.reports*100
 end
-function Comms.bubble(unit,text,kind,x,y,w,age,life,size)
+function Comms.bubble(unit,text,kind,x,y,w,age,life,size,enemy)
     local g=love.graphics
     size=size or 64
     local font=Fonts.get(14)
@@ -39,10 +39,16 @@ function Comms.bubble(unit,text,kind,x,y,w,age,life,size)
     local mid=Pilots.image("assets/comms/slg_tbox01.agi.png")
     local right=Pilots.image("assets/comms/slg_tbox02.agi.png")
     if left and mid and right then
-        g.setColor(1,1,1,alpha)
+        -- 敌方通讯使用红色底，阵营样式不烘焙进图片。
+        g.setColor(enemy and 1 or 1,enemy and 0.5 or 1,enemy and 0.46 or 1,alpha)
         g.draw(left,bx,24,0,22/left:getWidth(),bh/left:getHeight())
         g.draw(mid,bx+22,24,0,(w-bx-36)/mid:getWidth(),bh/mid:getHeight())
         g.draw(right,w-14,24,0,14/right:getWidth(),bh/right:getHeight())
+        if enemy then
+            g.setColor(0.92,0.28,0.24,alpha*0.9)
+            g.setLineWidth(2)
+            g.line(bx,24,bx,bh+16)
+        end
     end
     g.setFont(Fonts.get(12))
     g.setColor(0.94,0.98,1,alpha)
@@ -64,8 +70,23 @@ function Comms.bubble(unit,text,kind,x,y,w,age,life,size)
 end
 function Comms.draw(game)
     local x,w=bounds(game)
-    for i,r in ipairs(game.reports or {}) do
-        Comms.bubble(r.unit,r.text,r.kind,x,48+(i-1)*100,w,r.age,r.life)
+    local rows=0
+    for _,r in ipairs(game.reports or {}) do
+        Comms.bubble(r.unit,r.text,r.kind,x,48+rows*100,w,r.age,r.life)
+        rows=rows+1
+    end
+    -- 后勤槽位沿用同一列独立堆叠：雷斯特、阿尔茉随后，敌方红色垫底。
+    local logistics=game.logistics or {}
+    for _,name in ipairs({"tact","almo"}) do
+        local s=logistics[name]
+        if s and s.life>0 and s.text~="" then
+            Comms.bubble(s.unit,s.text,s.kind,x,48+rows*100,w,s.age,s.life)
+            rows=rows+1
+        end
+    end
+    local e=logistics.enemy
+    if e and e.life>0 and e.text~="" then
+        Comms.bubble(e.unit,e.text,e.kind,x,48+rows*100,w,e.age,e.life,nil,true)
     end
 end
 return Comms

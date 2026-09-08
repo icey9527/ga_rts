@@ -41,6 +41,16 @@ function V.run()
             assert(Manager.check_defeat(game) and not Manager.check_victory(game),"base loss overrides victory")
             Mission.finish(game,"defeat");Mission.update(game,0)
             assert(Mission.current(game),"authored defeat scene")
+            -- 剧情生命周期回归：interlude 一次性、finish 幂等、跳过开场不阻断中场。
+            game.mission={script={interludes={{time=0,id=25,text="t"}},victory={{id=25,text="v"},{id=25,text="v2"}}},shown={},queue={},actors={},age=0}
+            Mission.tick(game);Mission.tick(game)
+            assert(#game.mission.queue==1,"interlude fires exactly once")
+            Mission.finish(game,"victory");Mission.finish(game,"victory")
+            assert(#game.mission.queue==2,"finish scenes fire exactly once")
+            game.mission={script={interludes={{time=1,id=22,text="n"}}},shown={},queue={},actors={},age=0}
+            game.level_time=5
+            Mission.tick(game)
+            assert(#game.mission.queue==1,"skipping intro keeps interludes")
         end
     end
     local Unit=require("entities.unit")
@@ -68,6 +78,17 @@ function V.run()
     assert(Pref.get("auto_skill_4",false) and not Pref.get("auto_skill_6",true) and Pref.get("volume",1)==0.4,"per-pilot preference keys")
     Pref.values.volume="bad";assert(Pref.get("volume",0.65)==0.65,"malformed preference falls back")
     Pref.values=savedValues
+    local Slots=require("systems.comms_slots")
+    local slot=Slots.new({unit_type="researcher",character_id=22})
+    Slots.say(slot,"a","idle",4);Slots.say(slot,"b","idle",4)
+    assert(slot.text=="a" and #slot.queue==1,"first message shows and second queues")
+    for _=1,50 do Slots.update(slot,0.1) end
+    assert(slot.text=="b" and #slot.queue==0,"queued message shows after first expires")
+    local econ=Game.new();Economy.start(econ)
+    assert(econ.logistics.tact and econ.logistics.almo and econ.logistics.enemy,"logistics slots exist")
+    assert(econ.logistics.enemy.unit.game==econ and econ.logistics.enemy.unit.team==1,"enemy slot carries faction")
+    Economy.say(econ,"x");Economy.say(econ,"y")
+    assert(econ.researcher.text=="x" and econ.researcher.queue[1].text=="y","economy feedback queues per slot")
     local Special=require("systems.special_attacks")
     local g=Game.new()
     local u=Unit.new(0,0,0,Manager.unit_config("sniper"));u.character_id=4;g:add_unit(u)

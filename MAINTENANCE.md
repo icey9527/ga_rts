@@ -136,7 +136,7 @@ volume = 0.65
 
 ## 后勤槽位与未来菜单
 
-后勤提示必须写入 `game.logistics` 的明确槽位，不要直接从按钮绘制文字。当前兼容字段 `game.researcher` 指向玩家诺阿槽位；后续槽位包括塔克特队的雷斯特/阿尔茉和敌方后勤。后勤通讯要与可可的教官通讯分离，避免同一教学事件重复显示。敌方槽位使用阵营红色样式，但仍复用 `ui.comms` 的布局接口。
+后勤提示必须写入 `game.logistics` 的明确槽位，不要直接从按钮绘制文字。当前四个槽位全部接入独立 FIFO 队列（`systems/comms_slots.lua`）：`player`（诺阿，右下立绘）、`tact`（雷斯特，正式指导与批评）、`almo`（阿尔茉，元气鼓励）、`enemy`（索尔贝，红色气泡与红边头像，按战损阈值反应）。`game.researcher` 仍指向 `game.logistics.player`。可可的教官通讯走 `game.advisor` 的独立队列；右侧通讯列按雷斯特、阿尔茉、索尔贝（红底）顺序堆叠，均只画头像和对白。槽位 unit 必须携带 `game` 引用与 `team`，头像红边与台词阵营都按此判定。教学关的诺阿步骤会完全隐藏可可面板，指引在该步骤完成前保持可见。
 
 主菜单的机体预览暂只保留设计，不改变正式战局。预览应创建独立的演示状态：高生命并持续回血的木偶、只读机体配置、点击技能显示描述并循环释放视觉效果；退出预览时不得污染偏好、任务、经济或单位列表。
 
@@ -151,6 +151,7 @@ python tools/check_lua.py
 & 'C:/Program Files/LOVE/lovec.exe' . --verify
 & 'C:/Program Files/LOVE/lovec.exe' . --verify --exercise-check
 & 'C:/Program Files/LOVE/lovec.exe' . --verify --compact --cutins-shot
+& 'C:/Program Files/LOVE/lovec.exe' . --verify --logistics-shot
 & 'C:/Program Files/LOVE/lovec.exe' . --verify --compact --economy-shot --story-shot
 & 'C:/Program Files/LOVE/lovec.exe' . --verify --release-shot
 & 'C:/Program Files/LOVE/lovec.exe' . --verify --pacing

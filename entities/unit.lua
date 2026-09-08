@@ -112,6 +112,7 @@ function Unit:take_damage(dmg)
         self.alive = false
         self.state = "dead"
         if self.game then
+            require("systems.audio").play("destroyed")
             if self.team~=self.game.player_team and self.game.economy then
                 self.game.economy.credits=self.game.economy.credits+require("config.economy").bounty
             end
@@ -612,7 +613,8 @@ function Unit:use_skill(game)
     require("systems.special_attacks").prepare(self)
     self.skill_pending=self.skill_data.windup or require("config.pacing").skill_windup
     game:add_effect(require("entities.effect").charge(self,self.skill_pending))
-    if self.team==game.player_team then require("systems.cinematic").start(game,self) end
+    -- 敌我双方都启动侧边必杀演出；样式与尺寸由 cinematic 按阵营区分。
+    require("systems.cinematic").start(game,self)
     require("systems.advisor").event(game,"skill")
     self.sp = 0
     require("systems.audio").play("skill")
