@@ -1,5 +1,6 @@
 # 原始素材仓库（保留在本地，不入库）
 dump/
+.zcode/
 
 # 验证/调试临时输出
 verification*.png
