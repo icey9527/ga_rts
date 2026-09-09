@@ -4,5 +4,6 @@ name=塔克特
 face=face
 hit=face
 chara=chara.png
+type=0
 dialogue=dialogue.lua
 

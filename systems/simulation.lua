@@ -4,12 +4,7 @@ local Registry=require("systems.pack_registry")
 local DEFAULT_LINEUP={"mothership","fighter","sniper","artillery","light","repair","interceptor","tiger"}
 
 local function real_teams()
-    local out={}
-    for _,id in ipairs(Registry.ids()) do
-        if id~="default" and id~="random" then out[#out+1]=id end
-    end
-    if #out==0 then out={"rune","moon"} end
-    return out
+    return Registry.playable_ids()
 end
 
 local function side_roster(side_id,excluded_ids)
@@ -40,9 +35,9 @@ function Sim.deploy(game,player_id,enemy_id,formation)
     local base={x=ms and ms.x or 1800,y=ms and ms.y or 1800}
     game.units={}; game.selected_units={}; game.next_unit_id=0
     game.simulation=true; game.formation=formation
-    game.player_team_id=player_id or "rune"
-    game.enemy_team_id=enemy_id or "moon"
-    game.team_id=(game.player_team_id~="random" and game.player_team_id) or "rune"
+    game.player_team_id=player_id or Registry.default_player()
+    game.enemy_team_id=enemy_id or Registry.default_enemy()
+    game.team_id=(game.player_team_id~="random" and game.player_team_id) or Registry.default_player()
     game.chosen_squad=nil
     -- 双方各自组建；随机编队排除对方已用角色，避免同角色跨阵营重复
     local pside,eside
@@ -50,14 +45,14 @@ function Sim.deploy(game,player_id,enemy_id,formation)
         pside=side_roster(game.player_team_id)
         eside=side_roster(game.enemy_team_id)
         if game.player_team_id=="random" then
-            local ex={eside.commander.id}
-            for _,m in ipairs(eside.members) do ex[#ex+1]=m.id end
+            local ex={eside.commander}
+            for _,m in ipairs(eside.members) do ex[#ex+1]=m end
             pside=side_roster("random",ex)
         end
     else
         pside=side_roster(game.player_team_id)
-        local ex={pside.commander.id}
-        for _,m in ipairs(pside.members) do ex[#ex+1]=m.id end
+        local ex={pside.commander}
+        for _,m in ipairs(pside.members) do ex[#ex+1]=m end
         eside=side_roster("random",ex)
     end
     local sides={pside,eside}
@@ -73,13 +68,17 @@ function Sim.deploy(game,player_id,enemy_id,formation)
         local tid=team==0 and game.player_team_id or game.enemy_team_id
         local side=sides[team+1]
         local roster={{pilot=side.commander,ship="mothership"}}
-        for i,m in ipairs(side.members) do
-            roster[#roster+1]={pilot=m,ship=DEFAULT_LINEUP[((i-1)%(#DEFAULT_LINEUP-1))+2]}
+        for _,m in ipairs(side.members) do
+            roster[#roster+1]={pilot=m}
         end
         for i,entry in ipairs(roster) do
             local info=Registry.character(nil,entry.pilot.team,entry.pilot.id)
-            local ship=entry.ship or (info and info.ship)
-            if not ship then ship=DEFAULT_LINEUP[((i-1)%(#DEFAULT_LINEUP-1))+2] end
+            -- 机体：chara.tbl 的 type 数字固定机型；缺省/-1 从可用序列随机
+            local tnum=info and tonumber(info.type)
+            local ship=entry.ship or (tnum and tnum>0 and require("config.ship_types")[tnum]) or nil
+            if not ship or ship=="-1" then
+                ship=DEFAULT_LINEUP[math.random(2,#DEFAULT_LINEUP)]
+            end
             local spread=formation=="spread" and 240 or 150
             local x=base.x+team*3000+((i-1)%3)*spread
             local y=base.y+math.floor((i-1)/3)*spread
@@ -87,6 +86,8 @@ function Sim.deploy(game,player_id,enemy_id,formation)
             local u=Unit.new(x,y,team,Manager.unit_config(ship))
             u.character_id=entry.pilot.id
             u.team_id=entry.pilot.team
+            local side_name = team==0 and "player" or "enemy"
+            u.skin = require("systems.preferences").get("skin_"..side_name.."."..tostring(entry.pilot.team), "default")
             u.rank=(info and info.rank) or (({[4]="中尉",[13]="中校",[20]="司令",[21]="副官"})[entry.pilot.id] or ((entry.pilot.id>=10 and entry.pilot.id<=15) and "少校" or "少尉"))
             local px,py=game:find_clear_position(x,y,u.radius)
             u.x,u.y=px,py

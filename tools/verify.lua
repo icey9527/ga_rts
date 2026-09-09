@@ -250,9 +250,10 @@ function Verify.run()
     assert(Skill.can_execute(healer,healing)); Skill.execute(healer,healing)
     assert(patient.hp==patient.max_hp,"targeted repair")
     for i=1,4 do local actor=Unit.new(0,0,0,{}); radiogame:add_unit(actor); radiogame:report_event(actor,"command","test") end
-    assert(#radiogame.reports==3,"bounded simultaneous radio")
+    assert(require("ui.comms").count(radiogame)==3,"bounded simultaneous radio")
     require("ui.comms").update(radiogame,6)
-    assert(#radiogame.reports==0,"radio expires")
+    assert(require("ui.comms").count(radiogame)==0,"radio expires")
+    Verify.skill_repro()
     for _,name in ipairs(levels.scan_levels()) do
         local sim=Game.new()
         assert(levels.load_level(name,sim))
@@ -282,5 +283,50 @@ function Verify.pacing()
     for _,u in ipairs(initial) do if u.alive then survivors=survivors+1 end end
     f:write(string.format("180s simulation: first projectile %.2fs, first loss %s, initial survivors %d/%d, active units including reinforcements %d\n",first_shot,tostring(first_loss),survivors,count,#game.units))
     f:close()
+end
+-- 必杀技全链路回归：部署各 playable 队伍（动态发现，不写死队名）→逐机型 use_skill→
+-- 70 帧模拟（覆盖 windup 开火）→事件播报；并校验经济播报与左右手阵营绑定为通用行为。
+-- 注意：本测试严禁直接调用 love.graphics 绘制——在 load 阶段绘制会破坏渲染状态导致段错误。
+function Verify.skill_repro()
+    local Game=require("core.game")
+    local Manager=require("levels.manager")
+    local Sim=require("systems.simulation")
+    local Mission=require("systems.mission_script")
+    local Registry=require("systems.pack_registry")
+    for _,pid in ipairs(Registry.playable_ids()) do
+        for _,lv in ipairs({"level_05.tbl","level_01.tbl"}) do
+            local game=Game.new()
+            assert(Manager.load_level(lv,game)); Mission.start(game,lv)
+            Sim.deploy(game,pid,pid,"spread")
+            -- 经济播报非空（不得回退成裸事件名）+ 左右手阵营绑定（敌方槽=阵营1、绑敌方队名）
+            local Economy=require("systems.economy")
+            require("systems.advisor").apply_squad(game)
+            assert(game.researcher and game.researcher.unit,"researcher slot missing ["..pid.."]")
+            Economy.say(game,"open")
+            assert(game.researcher.text~="" and game.researcher.text~="open","economy open line missing ["..pid.."]")
+            assert(game.logistics.tact.unit.team==1 and game.logistics.tact.unit.team_id==pid,"enemy tact hand faction ["..pid.."]")
+            assert(game.logistics.almo.unit.team==1 and game.logistics.almo.unit.team_id==pid,"enemy almo hand faction ["..pid.."]")
+            local tried={}
+            for _,u in ipairs(game.units) do
+                if u.alive and u.team==game.player_team and u.skill_data and u.skill_data.type and not tried[u.unit_type] then
+                    tried[u.unit_type]=true
+                    local enemies=game:get_enemy_units(u.team)
+                    if enemies[1] then enemies[1].x,enemies[1].y=u.x+120,u.y end
+                    u.sp=u.max_sp; u.skill_target=enemies[1]; u.attack_target=enemies[1]
+                    game:select_unit(u)
+                    local ok,err=pcall(function() return u:use_skill(game) end)
+                    assert(ok,"use_skill 错误 ["..pid.." "..lv.." "..u.unit_type.."]: "..tostring(err))
+                    local ok2,err2=pcall(function()
+                        for _=1,70 do game:update(1/30) end
+                        game:report_event(u,"skill","特殊装备启动！")
+                    end)
+                    assert(ok2,"技能更新错误 ["..pid.." "..lv.." "..u.unit_type.."]: "..tostring(err2))
+                    game.cutins={};game.cinematic=nil;game.skill_slow=nil
+                end
+            end
+            local f=assert(io.open(love.filesystem.getSource().."/verification.txt","a"))
+            f:write("PASS: skill repro "..pid.." "..lv.."\n"); f:close()
+        end
+    end
 end
 return Verify

@@ -34,12 +34,26 @@ function Orders.issue(game,units,action,target,x,y)
     if accepted>0 then
         require("systems.advisor").event(game,action)
         require("systems.audio").play("confirm")
-        for _,u in ipairs(units) do require("systems.chatter").interact(game,u,action,target) end
+        -- 指挥确认由左手播报（类比右手负责资源面板）；未绑定角色或槽位忙时静默防刷屏。
+        if game.advisor and game.advisor.unit.character_id then
+            local Pilots=require("ui.pilots")
+            local line=Pilots.line(game.advisor.unit,"command","")
+            if line and line~="" and (not game.advisor.life or game.advisor.life<=0 or game.advisor.text=="") then
+                require("systems.comms_slots").say(game.advisor,line,"command",3.5)
+            end
+        end
     end
     if accepted==0 then
         game.bad_orders=(game.bad_orders or 0)+1
         require("systems.audio").play("error")
-        if game.bad_orders%3==0 then require("systems.advisor").say(game,"连续三次无效指令。卡兹亚，先看清目标，别拿大家的命试按钮。","failed") end
+        if game.bad_orders%3==0 then
+            -- 呼唤的是玩家指挥官（母舰角色），不是说话的左手自己。
+            local Pilots=require("ui.pilots")
+            local Registry=require("systems.pack_registry")
+            local cid=tonumber((Registry.load(game.player_team_id).team or {}).commander)
+            local name=(cid and Pilots.profile({character_id=cid,team_id=game.player_team_id}).name) or "指挥官"
+            require("systems.advisor").say(game,"连续三次无效指令。"..name.."，先看清目标，别拿大家的命试按钮。","failed")
+        end
     end
     return accepted
 end

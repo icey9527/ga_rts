@@ -26,7 +26,7 @@ for n=0,10 do
     Mission.start(g,string.format("level_%02d.tbl",n));Mission.update(g,0)
     local line,actor=Mission.current(g);assert(actor.game==g and old==line,"cached script has no game state")
     Mission.advance(g,true);assert(not Mission.busy(g))
-    Mission.finish(g,"defeat");Mission.update(g,0);assert(Mission.current(g),"defeat scene")
+    Mission.finish(g,"defeat");Mission.update(g,0);assert(not Mission.current(g),"mission scripts do not own result dialogue")
 end
 local g=new_game()
 local u=Unit.new(0,0,0,Manager.unit_config("sniper"));g:add_unit(u)

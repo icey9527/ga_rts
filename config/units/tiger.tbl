@@ -12,6 +12,6 @@ projectile_speed = 155
 splash_radius = 75
 radius = 35
 [skill]
-type = "shield"
-shield_amount = 1200
-duration = 12
+type = "missile_barrage"
+count = 14
+damage = 48

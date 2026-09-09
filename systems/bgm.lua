@@ -19,7 +19,7 @@ end
 
 function BGM.play_pack(game,state,loop)
     local pack=require("systems.pack_registry")
-    local team_id=(game and game.player_team_id) or (game and game.team_id) or "rune"
+    local team_id=(game and game.player_team_id) or (game and game.team_id) or pack.default_player()
     local file=pack.bgm(game and game.content_pack,team_id,state)
     if not file then return BGM.play(state,loop) end
     local key=team_id..":"..state

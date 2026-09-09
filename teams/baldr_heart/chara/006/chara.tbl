@@ -1,0 +1,11 @@
+[chara]
+id=006
+name=枫名
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+face_normal=f_kanna_0101ak.png
+face_attack=f_kanna_0101ik.png
+face_idle=f_kanna_0101ak.png
+face_hit=f_kanna_0101aw.png

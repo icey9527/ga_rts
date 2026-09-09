@@ -1,0 +1,11 @@
+[chara]
+id=007
+name=奈奈夏
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+face_normal=f_nanaka_0101ak.png
+face_attack=f_nanaka_0101ik.png
+face_idle=f_nanaka_0101eg.png
+face_hit=f_nanaka_0101aw.png

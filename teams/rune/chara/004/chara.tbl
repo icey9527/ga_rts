@@ -4,5 +4,6 @@ name=莉莉
 face=face
 hit=face
 chara=chara.png
+type=3
 dialogue=dialogue.lua
 

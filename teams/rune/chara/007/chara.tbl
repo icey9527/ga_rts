@@ -4,5 +4,6 @@ name=罗塞尔
 face=face
 hit=face
 chara=chara.png
+type=2
 dialogue=dialogue.lua
 

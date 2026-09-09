@@ -2,6 +2,36 @@ local Fonts=require("core.fonts")
 local Pilots=require("ui.pilots")
 local utf8=require("utf8")
 local Comms={}
+-- 报告数量（跳过过期槽）
+function Comms.count(game)
+    local n = 0
+    for i = 1, 3 do
+        local r = game.reports and game.reports[i]
+        if r and not r.expired then n = n + 1 end
+    end
+    return n
+end
+
+-- 报告落位：同单位回原槽 > 过期槽 > 最旧（槽位固定，不重排）
+function Comms.place(game, report)
+    game.reports = game.reports or {}
+    local slot
+    for i, r in ipairs(game.reports) do
+        if r.unit == report.unit then slot = i break end
+        if r.expired and not slot then slot = i end
+    end
+    if not slot then
+        if #game.reports < 3 then slot = #game.reports + 1
+        else
+            slot = 1
+            for i, r in ipairs(game.reports) do
+                if r.age < game.reports[slot].age then slot = i end
+            end
+        end
+    end
+    game.reports[slot] = report
+end
+
 function Comms.update(game,dt)
     for i=#(game.reports or {}),1,-1 do
         local r=game.reports[i]
@@ -17,14 +47,23 @@ local function bounds(game)
 end
 function Comms.contains(game,mx,my)
     local x,w=bounds(game)
-    return #(game.reports or {})>0 and mx>=x and mx<=x+w and my>=48 and my<=48+#game.reports*100
+    if #(game.reports or {})==0 then return false end
+    local h=0
+    for _,r in ipairs(game.reports or {}) do h=h+Comms.measure(r.text,w)+8 end
+    return mx>=x and mx<=x+w and my>=48 and my<=48+h
+end
+-- 气泡实际高度：按换行行数计算，绘制堆叠与点击判定共用同一套算法。
+function Comms.measure(text,w,size)
+    local font=Fonts.get(14)
+    local _,lines=font:getWrap(tostring(text or ""),w-(size or 64)-48)
+    return math.max(64,#lines*font:getHeight()+24)
 end
 function Comms.bubble(unit,text,kind,x,y,w,age,life,size,enemy)
     local g=love.graphics
     size=size or 64
     local font=Fonts.get(14)
-    local _,lines=font:getWrap(text,w-size-48)
-    local bh=math.max(64,#lines*font:getHeight()+24)
+    text=tostring(text or "")
+    local bh=Comms.measure(text,w,size)
     local enter=math.min(1,age/0.42)
     local flip=math.max(0.04,math.abs(math.cos((1-enter)*math.pi/2)))
     local alpha=math.min(1,age*8,life*3)
@@ -39,25 +78,24 @@ function Comms.bubble(unit,text,kind,x,y,w,age,life,size,enemy)
     local mid=Pilots.image("assets/comms/slg_tbox01.agi.png")
     local right=Pilots.image("assets/comms/slg_tbox02.agi.png")
     if left and mid and right then
-        -- 敌方通讯使用红色底，阵营样式不烘焙进图片。
-        g.setColor(enemy and 1 or 1,enemy and 0.5 or 1,enemy and 0.46 or 1,alpha)
+        -- 敌方通讯仅轻微暖色区分，保留左侧红色阵营线；不做整框重染（旧式纯红框已废弃）。
+        g.setColor(1,enemy and 0.9 or 1,enemy and 0.87 or 1,alpha)
         g.draw(left,bx,24,0,22/left:getWidth(),bh/left:getHeight())
         g.draw(mid,bx+22,24,0,(w-bx-36)/mid:getWidth(),bh/mid:getHeight())
         g.draw(right,w-14,24,0,14/right:getWidth(),bh/right:getHeight())
-        if enemy then
-            g.setColor(0.92,0.28,0.24,alpha*0.9)
-            g.setLineWidth(2)
-            g.line(bx,24,bx,bh+16)
-        end
     end
     g.setFont(Fonts.get(12))
     g.setColor(0.94,0.98,1,alpha)
     g.setFont(Fonts.get(14))
     g.setColor(0.09,0.15,0.2,alpha)
     local count=math.floor(math.max(0,age-0.25)*32)
-    local stop=utf8.offset(text,count+1)
-    local visible=stop and text:sub(1,stop-1) or text
-    g.printf(visible,bx+22,35,w-bx-34)
+    local chars=utf8.len(text) or #text
+    local visible=text
+    if count<chars then
+        local stop=utf8.offset(text,count+1)
+        visible=stop and text:sub(1,stop-1) or ""
+    end
+    g.printf(visible,bx+22,35,w-bx-34,"left")
     if kind=="hit" or kind=="lost" then
         g.setScissor(x+2,y+43-size/2,size,size)
         for i=1,14 do
@@ -69,24 +107,18 @@ function Comms.bubble(unit,text,kind,x,y,w,age,life,size,enemy)
     g.pop()
 end
 function Comms.draw(game)
+    local g=love.graphics
     local x,w=bounds(game)
-    local rows=0
+    -- 按气泡实际高度堆叠（+8px 间距），长文本不再压进下一条。
+    local y=48
     for _,r in ipairs(game.reports or {}) do
-        Comms.bubble(r.unit,r.text,r.kind,x,48+rows*100,w,r.age,r.life)
-        rows=rows+1
+        Comms.bubble(r.unit,r.text,r.kind,x,y,w,r.age,r.life)
+        y=y+Comms.measure(r.text,w)+8
     end
-    -- 后勤槽位沿用同一列独立堆叠：雷斯特、阿尔茉随后，敌方红色垫底。
-    local logistics=game.logistics or {}
-    for _,name in ipairs({"tact","almo"}) do
-        local s=logistics[name]
-        if s and s.life>0 and s.text~="" then
-            Comms.bubble(s.unit,s.text,s.kind,x,48+rows*100,w,s.age,s.life)
-            rows=rows+1
-        end
-    end
-    local e=logistics.enemy
+    -- 敌方左右手已改到画面底部镜像位绘制（见 advisor.draw）；此处仅保留敌方 R&D。
+    local e=(game.logistics or {}).enemy
     if e and e.life>0 and e.text~="" then
-        Comms.bubble(e.unit,e.text,e.kind,x,48+rows*100,w,e.age,e.life,nil,true)
+        Comms.bubble(e.unit,e.text,e.kind,x,y,w,e.age,e.life,nil,true)
     end
 end
 return Comms

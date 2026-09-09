@@ -1,0 +1,12 @@
+[chara]
+id=001
+name=崎
+face=face
+hit=face
+chara=chara.png
+type=-1
+dialogue=dialogue.lua
+face_normal=f_misaki_0101no.png
+face_attack=f_misaki_0101ik.png
+face_idle=f_misaki_0101eg.png
+face_hit=f_misaki_0101bs.png

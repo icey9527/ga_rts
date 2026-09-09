@@ -20,7 +20,10 @@ end
 -- 组建一支随机编队；excluded_ids 为不可用的角色编号列表（通常是对方全体）。
 function R.roster(excluded_ids)
     local excluded={}
-    for _,id in ipairs(excluded_ids or {}) do excluded[id]=true end
+    for _,id in ipairs(excluded_ids or {}) do
+        if type(id)=="table" then excluded[tostring(id.team)..":"..tostring(id.id)]=true
+        else excluded[id]=true end
+    end
     local pool=R.pool()
     local used={}
     local function pick()
@@ -40,7 +43,11 @@ function R.roster(excluded_ids)
         return nil
     end
     local roster={commander=pick(),left=pick(),right=pick(),members={}}
-    if not roster.commander then roster.commander={team="rune",id=0} end
+    if not roster.commander then
+        -- 池子全空的兜底：用第一支可用队伍的司令
+        local pid=Registry.default_player()
+        roster.commander={team=pid,id=tonumber((Registry.load(pid).team or {}).commander) or 0}
+    end
     for _=1,6 do
         local m=pick()
         if m then roster.members[#roster.members+1]=m end

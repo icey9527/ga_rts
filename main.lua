@@ -22,12 +22,14 @@ local SkillVisuals=require("systems.skill_visuals")
 local Deployment=require("ui.deployment")
 local Mission=require("systems.mission_script")
 local Simulation=require("systems.simulation")
+local Registry=require("systems.pack_registry")
 
 local game
 local camera
 local settings = {}
 local level_files = {}
 local current_level_name = ""
+local current_level_file = ""
 local menu
 local level_names = {}
 local level_scores = {}
@@ -180,8 +182,9 @@ local function start_level(index)
     end
 
     current_level_name = game.level_name or level_files[index]
-    game.player_team_id=game.player_team_id or "rune"
-    game.enemy_team_id=game.enemy_team_id or "moon"
+    current_level_file = level_files[index]
+    game.player_team_id=game.player_team_id or Registry.default_player()
+    game.enemy_team_id=game.enemy_team_id or Registry.default_enemy()
     game.team_id=game.player_team_id
     Mission.start(game,level_files[index])
     Advisor.start(game)
@@ -204,6 +207,8 @@ end
 
 local function begin_briefing()
     Simulation.deploy(game,Deployment.player_id(),Deployment.enemy_id(),Deployment.formation)
+    -- 队伍已部署后再生成战前小剧场，确保说话人和阵营映射完整。
+    Mission.start(game,current_level_file)
     game.briefing={time=0}
     game_state="briefing"
     game:pause()
@@ -353,7 +358,7 @@ function love.load(args)
             assert(game_state=="briefing" and game:is_paused(),"deployment enters paused briefing")
             love.keypressed("space")
             assert(game_state=="playing" and not game:is_paused(),"briefing skip starts battle")
-            for _=1,900 do game:update(1/30); require("systems.chatter").update(game,1/30) end
+            for _=1,900 do game:update(1/30) end
             game:pause()
             _G.VERIFY_NAME="verification-exercise.png"
         end
@@ -456,6 +461,8 @@ function love.update(dt)
         end
         return
     end
+    -- 部署界面预览当前我方队伍的音乐，切换队伍时立即跟随。
+    if game_state=="deployment" then game.player_team_id=Deployment.player_id() end
     -- 背景音乐按状态切换：菜单/简报用标题曲，战斗用战斗曲，结算用胜负曲。
     if game_state=="menu" or game_state=="deployment" or game_state=="briefing" then
         require("systems.bgm").play_pack(game,"menu")
@@ -492,7 +499,6 @@ function love.update(dt)
     camera:edge_scroll_update(dt)
     Comms.update(game,dt)
     if not game.cinematic then Mission.update(game,dt) end
-    require("systems.chatter").update(game,dt)
     SkillVisuals.update(game,dt)
     Advisor.update(game,dt)
     if not game:is_paused() then Cinema.update(game,dt) end
@@ -677,8 +683,8 @@ local function draw_playing()
         love.graphics.printf("空格继续游戏 · 战斗不会因返回菜单而保存",0,h/2+4,w,"center")
     end
     SelectionPanel.draw(game)
-    if not Mission.busy(game) and not game.cinematic then Comms.draw(game) end
-    if not game.cinematic and not Mission.busy(game) then Advisor.draw(game) end
+    if not Mission.busy(game) then Comms.draw(game) end
+    if not Mission.busy(game) then Advisor.draw(game) end
     EconomyPanel.draw(game)
     if not game.cinematic then Mission.draw(game) end
     Cinema.draw(game)
@@ -718,6 +724,10 @@ end
 function hide_all_menus()
     context_menu:hide()
     global_menu:hide()
+    if game and game.advisor and game.advisor.panel_active then
+        require("systems.comms_slots").clear(game.advisor)
+        game.advisor.panel_active=false
+    end
     if command_mode ~= "targeting" then restore_command_pause() end
 end
 
@@ -1058,6 +1068,16 @@ end
 function show_context_menu(mx, my)
     if #game.selected_units == 0 then return end
     pause_for_command()
+    -- 调出指挥面板时左手入位，并说一句面板预设台词（类比右手管资源面板）。
+    if game.advisor then
+        if game.advisor.unit.character_id then
+            local line=require("ui.pilots").line(game.advisor.unit,"panel","")
+            if line and line~="" then
+                require("systems.comms_slots").replace(game.advisor,line,"idle",3600)
+                game.advisor.panel_active=true
+            end
+        end
+    end
     global_menu:hide()
     local u = game.selected_units[1]
     local opts = {{"全体命令", "global"}, {"移动", "move"}}
@@ -1075,7 +1095,17 @@ function execute_menu_action(action)
         local u=game.selected_units[1]
         if u.unit_type=="repair" then
             context_menu:show(context_menu.x,context_menu.y,{{"全舰修复","fleet_heal"},{"维修工具：选友舰","repair_tool"},{"返回","back"}})
-        elseif require("systems.skill").target_mode(u)=="enemy" then start_targeting("skill_target")
+        elseif require("systems.skill").target_mode(u)=="enemy" then
+            local Skill=require("systems.skill")
+            if u.sp<u.max_sp then
+                game:report_event(u,"failed","能量还没充满，再等等。")
+                require("systems.audio").play("error")
+            elseif not Skill.can_execute(u,game) then
+                game:report_event(u,"failed","当前没有合适的目标。")
+                require("systems.audio").play("error")
+            else
+                start_targeting("skill_target")
+            end
         else execute_menu_action("skill") end
     elseif action=="back" then show_context_menu(context_menu.x,context_menu.y)
     elseif action=="fleet_heal" then

@@ -2,14 +2,16 @@
 local Game = {}
 
 function Game.new()
+    -- 默认队伍取 teams 目录扫描结果的前两队，任何队伍都可作我方/敌方
+    local ok, Registry = pcall(require, "systems.pack_registry")
     local self = {
         units = {},
         projectiles = {},
         effects = {},
         selected_units = {},
         player_team = 0,
-        player_team_id = "rune",
-        enemy_team_id = "moon",
+        player_team_id = ok and Registry.default_player() or nil,
+        enemy_team_id = ok and Registry.default_enemy() or nil,
         ai_controllers = {},
         level_time = 0,
         paused = false,
@@ -71,11 +73,9 @@ function Game:report_event(unit,kind,text)
     local Pilots=require("ui.pilots")
     self.reports=self.reports or {}
     local line=Pilots.line(unit,kind,text)
+    print("DBG REP",unit.name,kind,line)
     if not line then return end
     local report={unit=unit,kind=kind,text=line,life=5.5,age=0}
-    for i=#self.reports,1,-1 do
-        if self.reports[i].unit==unit then table.remove(self.reports,i) end
-    end
     if #self.reports>=3 then table.remove(self.reports,1) end
     self.reports[#self.reports+1]=report
     self.report=report
@@ -242,6 +242,7 @@ function Game:update(dt,real_dt)
         for i = #self.pending_waves, 1, -1 do
             local w = self.pending_waves[i]
             if self.level_time >= (w.time or 0) then
+                local first_spawned
                 for n = 1, (w.count or 1) do
                     local angle = math.random() * math.pi * 2
                     local dist = math.random() * (w.spread or 120)
@@ -250,8 +251,10 @@ function Game:update(dt,real_dt)
                     local u=Unit.new(x,y,w.team or 1,w.cfg)
                     if n==1 then u.character_id=w.character_id end
                     self:add_unit(u)
+                    first_spawned=first_spawned or u
                 end
                 require("systems.audio").play("reinforce")
+                require("systems.cinematic").reinforcement(self,first_spawned)
                 table.remove(self.pending_waves, i)
             end
         end
@@ -324,7 +327,6 @@ function Game:find_clear_position(x, y, r)
 end
 
 function Game:reset()
-    self.chatter_time=0;self.chatter_reply=nil
     self.exchange_times={}
     self.screen_flash=nil;self.skill_focus=nil;self.simulation=false
     self.skill_slow=nil

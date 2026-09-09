@@ -1,0 +1,11 @@
+[chara]
+id=009
+name=直翔
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+face_normal=f_naoto_0101ak.png
+face_attack=f_naoto_0101ir.png
+face_idle=f_naoto_0102tw.png
+face_hit=f_naoto_0102aw.png

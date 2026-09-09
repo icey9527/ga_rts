@@ -38,7 +38,6 @@ function Camera:world_to_screen(wx, wy)
 end
 
 function Camera:set_follow(unit)
-    if unit and unit.game then require("systems.chatter").interact(unit.game,unit,"observe") end
     self.follow_target = unit
 end
 

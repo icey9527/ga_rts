@@ -13,7 +13,8 @@ function P.save()
     table.sort(keys)
     for _,k in ipairs(keys) do
         local v=P.values[k]
-        if type(v)=="boolean" or type(v)=="number" then lines[#lines+1]=k.." = "..tostring(v) end
+        if type(v)=="boolean" or type(v)=="number" then lines[#lines+1]=k.." = "..tostring(v)
+        elseif type(v)=="string" then lines[#lines+1]=k..' = "'..v..'"' end
     end
     love.filesystem.createDirectory("saves")
     return love.filesystem.write(P.path,table.concat(lines,"\n").."\n")

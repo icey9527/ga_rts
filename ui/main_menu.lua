@@ -83,6 +83,39 @@ function MainMenu:wheelmoved(_, dy)
     self:clamp_scroll()
 end
 
+-- 皮肤系统：扫描 teams/<队>/skins/<皮肤名>/，有 skins 目录的队伍才出现在切换列表。
+-- getInfo 对目录首返回值为 nil，目录存在性一律用 getDirectoryItems 判断。
+function MainMenu:skin_teams()
+    local out={}
+    for _,team in ipairs(love.filesystem.getDirectoryItems("teams")) do
+        local sdir="teams/"..team.."/skins"
+        local subs=love.filesystem.getDirectoryItems(sdir)
+        if #subs>0 then
+            local skins={"default"}
+            for _,sk in ipairs(subs) do
+                if sk~="default" and #(love.filesystem.getDirectoryItems(sdir.."/"..sk))>0 then skins[#skins+1]=sk end
+            end
+            if #skins>1 then out[#out+1]={team=team,skins=skins} end
+        end
+    end
+    return out
+end
+function MainMenu:cycle_skin(mx,my)
+    for team,rect in pairs(self._skin_rects or {}) do
+        if mx>=rect[1] and mx<=rect[1]+rect[3] and my>=rect[2] and my<=rect[2]+rect[4] then
+            local Preferences=require("systems.preferences")
+            local skins=self._skin_skins[team] or {"default"}
+            local cur=Preferences.get("skin_player."..team,"default")
+            local idx=1
+            for i,s in ipairs(skins) do if s==cur then idx=i break end end
+            local nsk=skins[idx%#skins+1]
+            Preferences.set("skin_player."..team,nsk)
+            return true
+        end
+    end
+    return false
+end
+
 function MainMenu:mousepressed(mx, my, button)
     if button ~= 1 then return nil end
     if self.confirm then
@@ -91,6 +124,7 @@ function MainMenu:mousepressed(mx, my, button)
         self.confirm=false
         return nil
     end
+    if self:cycle_skin(mx,my) then return nil end
     local visible_h = self.visible * self.item_h
     if my >= self.list_y and my <= self.list_y + visible_h and mx >= 150 and mx <= love.graphics.getWidth() - 150 then
         local idx = math.floor((my - self.list_y + self.scroll) / self.item_h) + 1
@@ -166,6 +200,23 @@ function MainMenu:draw()
     love.graphics.setFont(font_sm)
     love.graphics.setColor(0.55, 0.60, 0.70)
     love.graphics.printf("↑↓ 选择 | 回车/点击 开始 | ESC 退出游戏（需确认）", 0, h - 42, w, "center")
+
+    -- 皮肤切换：仅有 skins 目录的队伍显示，点击循环（写偏好，进战斗即生效）。
+    self._skin_rects={}
+    self._skin_skins={}
+    local Registry=require("systems.pack_registry")
+    local yy=h-70
+    for _,t in ipairs(self:skin_teams()) do
+        local ok,pack=pcall(function() return Registry.load(t.team) end)
+        local name=(ok and pack and pack.team and pack.team.name) or t.team
+        local cur=require("systems.preferences").get("skin_player."..t.team,"default")
+        love.graphics.setFont(font_sm)
+        love.graphics.setColor(0.78,0.84,0.98)
+        love.graphics.print(name.."皮肤："..(cur=="default" and "默认" or cur).."（点击切换）",24,yy)
+        self._skin_rects[t.team]={24,yy-4,340,26}
+        self._skin_skins[t.team]=t.skins
+        yy=yy-28
+    end
 
     -- 标题徽章：取自原始素材库，作装饰水印。
     local logo = require("ui.pilots").image("assets/ui/title_logo.png")

@@ -4,5 +4,6 @@ name=兰花
 face=face
 hit=face
 chara=chara.png
+type=8
 dialogue=dialogue.lua
 

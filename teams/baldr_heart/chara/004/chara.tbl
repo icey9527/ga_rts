@@ -1,0 +1,11 @@
+[chara]
+id=004
+name=凪
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+face_normal=f_nagi_0101ak.png
+face_attack=f_nagi_0101ik.png
+face_idle=f_nagi_0101ak.png
+face_hit=f_nagi_0101aw.png

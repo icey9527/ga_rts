@@ -4,23 +4,27 @@ anim = {player = {at = -10, dir = 1}, enemy = {at = -10, dir = 1}}}
 local Fonts = require("core.fonts")
 local Pilots = require("ui.pilots")
 local Registry = require("systems.pack_registry")
+local Preferences = require("systems.preferences")
 local SHOW_H = 340
+local skins_for
+local skin_label
+local skin_fx = {player={time=0,old=nil,new=nil,current=nil}, enemy={time=0,old=nil,new=nil,current=nil}}
+local skin_hover = {player=nil, enemy=nil}
+local skin_hit = {}
+local function skin_pref_key(which, team_id)
+    return "skin_" .. tostring(which) .. "." .. tostring(team_id)
+end
+local function get_skin(which, team_id)
+    return Preferences.get(skin_pref_key(which,team_id), "default")
+end
 
 function UI.list()
     if not UI._list then
-        local ok, ids = pcall(Registry.ids)
-        local real = (ok and type(ids) == "table" and #ids > 0) and ids or {"rune", "moon"}
-        local filtered = {}
-        for _, id in ipairs(real) do
-            if id ~= "default" and id ~= "random" then filtered[#filtered + 1] = id end
-        end
-        if #filtered == 0 then filtered = {"rune", "moon"} end
+        local ok, ids = pcall(Registry.playable_ids)
+        local filtered = (ok and type(ids) == "table") and ids or {}
+        if #filtered == 0 then filtered[1] = "random" end
         filtered[#filtered + 1] = "random"  -- 随机永远排在最末尾
         UI._list = filtered
-        for i, id in ipairs(UI._list) do
-            if id == "rune" then UI.player = i end
-            if id == "moon" then UI.enemy = i end
-        end
     end
     return UI._list
 end
@@ -28,6 +32,7 @@ end
 function UI.reset()
     UI._list = nil
     UI.player, UI.enemy, UI.bar = 1, 2, "player"
+    skin_fx = {player={time=0,old=nil,new=nil,current=nil}, enemy={time=0,old=nil,new=nil,current=nil}}
 end
 
 function UI.player_id() return UI.list()[UI.player] end
@@ -50,8 +55,8 @@ local function side_colors(which)
     return {border = {1, 0.35, 0.3}, strip = {1, 0.28, 0.24}, name = {1, 0.42, 0.38}, text = {1, 0.95, 0.92}}
 end
 
-local function draw_standing(g, team_id, char_id, cx, anchor_y, height, anchor, alpha, flash)
-    local img = Pilots.standing({character_id = char_id, team_id = team_id})
+local function draw_standing(g, team_id, char_id, cx, anchor_y, height, anchor, alpha, flash, skin)
+    local img = Pilots.standing({character_id = char_id, team_id = team_id, skin = skin})
     g.push("all")
     if img then
         local s = height / img:getHeight()
@@ -74,8 +79,8 @@ local function draw_standing(g, team_id, char_id, cx, anchor_y, height, anchor, 
     end
 end
 
-local function draw_avatar(g, team_id, char_id, cx, cy, size, game, team)
-    Pilots.draw({character_id = char_id, team_id = team_id, game = game, team = team}, cx - size / 2, cy - size / 2, size, size)
+local function draw_avatar(g, team_id, char_id, cx, cy, size, game, team, skin)
+    Pilots.draw({character_id = char_id, team_id = team_id, game = game, team = team, skin = skin}, cx - size / 2, cy - size / 2, size, size)
 end
 
 -- 白字细描边：名字条统一样式
@@ -91,12 +96,12 @@ end
 
 -- 问号标识：修正字体渲染边界，精确水平/垂直居中
 local function draw_mark(g, text, cx, cy, size, color)
+    -- 按字形实际宽高精确居中
     local font = Fonts.get(size)
     g.setFont(font)
     g.setColor(color)
-    local fh = font:getHeight()
-    local box_w = size * 4
-    g.printf(text, cx - box_w / 2, cy - fh / 2, box_w, "center")
+    local tw, th = font:getWidth(text), font:getHeight()
+    g.print(text, cx - tw / 2, cy - th / 2)
 end
 
 -- 随机编队的预览数据：每 0.5 秒从所有队伍轮换一组候选。
@@ -111,7 +116,9 @@ end
 
 local function side_display(side_id)
     if side_id == "random" then
-        return UI.random_preview or {commander = {team = "rune", id = 0}, left = {team = "rune", id = 25}, right = {team = "rune", id = 22}, members = {}}
+        -- 预览轮换还没出第一组时直接组一支，避免画到写死的占位编队
+        UI.random_preview = UI.random_preview or require("systems.random_roster").roster()
+        return UI.random_preview
     end
     local cfg = Registry.load(side_id).team or {}
     local cmd = tonumber(cfg.commander)
@@ -131,7 +138,7 @@ end
 -- ==========================================
 -- 核心卡牌绘制逻辑统一合并
 -- ==========================================
-local function draw_portrait_card(g, which, x, y, w, h, role, pilot, random, slide, flash)
+local function draw_portrait_card(g, which, x, y, w, h, role, pilot, random, slide, flash, skin)
     local col = side_colors(which)
     local strip_h = 30 -- 文字区域尺寸
     local r = 12       -- 圆角半径
@@ -140,20 +147,26 @@ local function draw_portrait_card(g, which, x, y, w, h, role, pilot, random, sli
     g.setColor(0.04, 0.07, 0.13, 0.92)
     g.rectangle("fill", x, y, w, h, r, r)
 
-    -- 2. 绘制底部阵营颜色条（使用剪裁区域实现外侧完美贴合）
-    g.setScissor(x, y + h - strip_h, w, strip_h)
+    -- 2. 用卡片轮廓模板裁剪色条。模板会跟随当前变换，缩放时不会留下残影。
+    g.stencil(function()
+        g.rectangle("fill", x, y, w, h, r, r)
+    end, "replace", 1)
+    g.setStencilTest("equal", 1)
     g.setColor(col.strip[1], col.strip[2], col.strip[3], 0.95)
-    g.rectangle("fill", x, y, w, h, r, r) 
-    g.setScissor()
+    g.rectangle("fill", x, y + h - strip_h, w, strip_h)
+    g.setStencilTest()
 
-    -- 3. 绘制立绘区域
-    g.setScissor(x, y, w, h - strip_h)
+    -- 3. 立绘也使用随卡片缩放的模板裁剪，避免固定裁剪框截留角色像素。
+    g.stencil(function()
+        g.rectangle("fill", x, y, w, h - strip_h, r, r)
+    end, "replace", 1)
+    g.setStencilTest("equal", 1)
     if random then
         draw_mark(g, "？", x + w / 2, y + (h - strip_h) / 2, math.floor(w * 0.35), {1, 0.95, 0.6})
     else
-        draw_standing(g, pilot.team, pilot.id, x + w / 2 + (slide or 0), y + h - strip_h, h - strip_h - 4, "bottom", 1, flash)
+        draw_standing(g, pilot.team, pilot.id, x + w / 2 + (slide or 0), y + h - strip_h, h - strip_h - 4, "bottom", 1, flash, skin)
     end
-    g.setScissor()
+    g.setStencilTest()
 
     -- 4. 绘制文字信息
     local name_str = random and "？？？" or Pilots.profile({character_id = pilot.id, team_id = pilot.team}).name
@@ -187,12 +200,14 @@ local function draw_side(g, game, which, y0, selected)
     g.rectangle("fill", 0, y0, w, SHOW_H)
 
     g.setFont(Fonts.get(24))
+    local name_str_display = team_name(id)
+    local has_skin = skins_for(id) ~= nil
     if which == "player" then
         g.setColor(1, 0.92, 0.5)
-        g.print(team_name(id), 34, y0 + 8)
+        g.print(name_str_display, 34, y0 + 8)
     else
         g.setColor(1, 0.42, 0.38)
-        g.printf(team_name(id), w - 34 - 420, y0 + SHOW_H - 40, 420, "right")
+        g.printf(name_str_display, w - 34 - 420, y0 + SHOW_H - 40, 420, "right")
     end
 
     local commander_cx = 0.5 * w
@@ -211,23 +226,60 @@ local function draw_side(g, game, which, y0, selected)
     end
 
     -- 指挥官 (190x250) & 左右手 (170x190) - 左右位置保持一致，不做水平翻转
-    draw_portrait_card(g, which, commander_cx - 95, cmd_y, 190, 250, "指挥", side.commander, id == "random", slide, flash)
-    draw_portrait_card(g, which, lx - 85, off_y, 170, 190, "左手", side.left, id == "random", slide, flash)
-    draw_portrait_card(g, which, rx - 85, off_y, 170, 190, "右手", side.right, id == "random", slide, flash)
+    local sf=skin_fx[which]
+    local flip=(sf and sf.time>0) and math.min(1,sf.time/0.8) or 0
+    -- 翻牌：绕水平中轴上下翻面，只压缩垂直方向，横向宽度保持不变。
+    local flip_scale=flip>0 and math.max(0.04,math.abs(math.cos(flip*math.pi))) or 1
+    local flip_progress = 1 - flip
+    if sf and sf.team ~= id then
+        sf.team=id; sf.current=get_skin(which,id); sf.time=0; sf.old=nil; sf.new=nil
+    end
+    local display_skin = sf and sf.current
+    if display_skin == nil then
+        display_skin = get_skin(which, id)
+        if sf then sf.current = display_skin end
+    end
+    if sf and sf.time > 0 then
+        display_skin = flip_progress < 0.5 and sf.old or sf.new
+    end
+    if display_skin == "default" then display_skin = nil end
+    local mx,my=love.mouse.getPosition()
+    local hovered=nil
+    local function hover_card(key,cx,cy,cw,ch)
+        local h=has_skin and mx>=cx-cw/2 and mx<=cx+cw/2 and my>=cy and my<=cy+ch
+        if h then hovered=key end
+        skin_hit[which..":"..key]=has_skin and {team=id,x=cx-cw/2,y=cy,w=cw,h=ch} or nil
+        return h and (1+0.035*(0.5+0.5*math.sin(UI.clock*7))) or 1
+    end
+    skin_hover[which]=hovered
+    local cmd_scale=hover_card("commander",commander_cx,cmd_y,190,250)
+    g.push("all");g.translate(commander_cx,cmd_y+125);g.scale(cmd_scale,flip_scale*cmd_scale);g.translate(-commander_cx,-cmd_y-125)
+    draw_portrait_card(g, which, commander_cx - 95, cmd_y, 190, 250, "指挥", side.commander, id == "random", slide, flash, display_skin)
+    g.pop()
+    local left_scale=hover_card("left",lx,off_y,170,190)
+    local right_scale=hover_card("right",rx,off_y,170,190)
+    g.push("all");g.translate(lx,off_y+95);g.scale(left_scale,flip_scale*left_scale);g.translate(-lx,-off_y-95)
+    draw_portrait_card(g, which, lx - 85, off_y, 170, 190, "左手", side.left, id == "random", slide, flash, display_skin);g.pop()
+    g.push("all");g.translate(rx,off_y+95);g.scale(right_scale,flip_scale*right_scale);g.translate(-rx,-off_y-95)
+    draw_portrait_card(g, which, rx - 85, off_y, 170, 190, "右手", side.right, id == "random", slide, flash, display_skin);g.pop()
 
     local gap = 74
     local x0 = commander_cx - (#side.members - 1) * gap / 2 + slide
     for i, m in ipairs(side.members) do
         -- 队员一律按原始顺序从左往右排列
-        draw_avatar(g, m.team, m.id, x0 + (i - 1) * gap, mem_cy, 58, game, mirror and 1 or 0)
+        local cx=x0+(i-1)*gap; local h=has_skin and mx>=cx-32 and mx<=cx+32 and my>=mem_cy-4 and my<=mem_cy+64
+        skin_hit[which..":member"..i]=has_skin and {team=id,x=cx-32,y=mem_cy-4,w=64,h=68} or nil
+        local sc=h and (1+0.035*(0.5+0.5*math.sin(UI.clock*7))) or 1
+        g.push("all");g.translate(cx,mem_cy+29);g.scale(sc,flip_scale*sc);g.translate(-cx,-mem_cy-29)
+        draw_avatar(g, m.team, m.id, cx-29, mem_cy, 58, game, mirror and 1 or 0, display_skin);g.pop()
     end
 
     g.pop()
-
+    -- 队伍切换箭头仍属于编队选择，不与皮肤卡片交互混用。
     local cy = y0 + SHOW_H / 2 - 30
-    UI.arrows[which] = { 
-        {x = 14, y = cy, w = 56, h = 60, dir = -1, side = which}, 
-        {x = w - 70, y = cy, w = 56, h = 60, dir = 1, side = which} 
+    UI.arrows[which] = {
+        {x = 14, y = cy, w = 56, h = 60, dir = -1, side = which},
+        {x = w - 70, y = cy, w = 56, h = 60, dir = 1, side = which}
     }
     for _, a in ipairs(UI.arrows[which]) do
         local hot = which == UI.bar
@@ -295,8 +347,77 @@ function UI.wheelmoved(dy, mx, my)
     UI.cycle(which, dy > 0 and -1 or 1)
 end
 
+-- 皮肤列表：队伍有 skins 目录才可切换；cycle 按方向循环并写偏好。
+-- 注意：getInfo 对目录首返回值为 nil，目录存在性一律用 getDirectoryItems 判断。
+skins_for = function(team_id)
+    if not team_id or team_id == "random" or team_id == "default" then return nil end
+    local sdir = "teams/" .. team_id .. "/skins"
+    if #(love.filesystem.getDirectoryItems(sdir)) == 0 then return nil end
+    local skins = {"default"}
+    for _, sk in ipairs(love.filesystem.getDirectoryItems(sdir)) do
+        if #(love.filesystem.getDirectoryItems(sdir .. "/" .. sk)) > 0 and sk ~= "default" then skins[#skins + 1] = sk end
+    end
+    if #skins < 2 then return nil end
+    return skins
+end
+function UI.cycle_skin(team_id, dir, target_which)
+    local skins = skins_for(team_id)
+    if not skins then return end
+    local target = target_which
+    if not target then
+        for _, which in ipairs({"player", "enemy"}) do
+            if UI.list()[which=="player" and UI.player or UI.enemy]==team_id then target=which break end
+        end
+    end
+    local key = skin_pref_key(target or "player", team_id)
+    local cur = (target and skin_fx[target].current) or Preferences.get(key, "default")
+    if target and skin_fx[target].time > 0 then
+        local progress=1-math.min(1,skin_fx[target].time/0.8)
+        cur=(progress < 0.5) and skin_fx[target].old or skin_fx[target].new or cur
+    end
+    local idx = 1
+    for i, s in ipairs(skins) do if s == cur then idx = i break end end
+    local next_idx = ((idx - 1 + (dir or 1)) % #skins) + 1
+    local next_skin=skins[next_idx]
+    local saved=Preferences.set(key, next_skin)
+    if target then
+        skin_fx[target].old=cur
+        skin_fx[target].new=next_skin
+        skin_fx[target].current=next_skin
+    end
+    if target then skin_fx[target].time=0.8 end
+end
+skin_label = function(team_id)
+    local cur = Preferences.get(skin_pref_key("player", team_id), "default")
+    return cur == "default" and "默认" or cur
+end
+
 function UI.click(x, y)
     local w = love.graphics.getWidth()
+    for _,which in ipairs({"player","enemy"}) do
+        local id=UI.list()[which=="player" and UI.player or UI.enemy]
+        if skins_for(id) then
+            local y0 = show_y(which)
+            local cmd_y = which == "player" and y0 + 6 or y0 + SHOW_H - 250 - 6
+            local off_y = which == "player" and y0 + 56 or y0 + SHOW_H - 190 - 56
+            local cx, lx, rx = 0.5 * w, 0.24 * w, 0.76 * w
+            local hit = (x >= cx-95 and x <= cx+95 and y >= cmd_y and y <= cmd_y+250)
+                or (x >= lx-85 and x <= lx+85 and y >= off_y and y <= off_y+190)
+                or (x >= rx-85 and x <= rx+85 and y >= off_y and y <= off_y+190)
+            local side = side_display(id)
+            local mem_cy = which == "player" and y0 + SHOW_H - 36 or y0 + 36
+            local gap = 74
+            local x0 = cx - (#side.members - 1) * gap / 2
+            for i = 1, #side.members do
+                local mc = x0 + (i - 1) * gap
+                if x >= mc - 32 and x <= mc + 32 and y >= mem_cy - 4 and y <= mem_cy + 64 then hit = true break end
+            end
+            if hit then
+                if not skin_fx[which] or skin_fx[which].time <= 0 then UI.cycle_skin(id, 1, which) end
+                return false
+            end
+        end
+    end
     for _, group in pairs(UI.arrows) do
         for _, a in ipairs(group) do
             if x >= a.x and x <= a.x + a.w and y >= a.y and y <= a.y + a.h then
@@ -314,11 +435,13 @@ function UI.draw(game)
     local g = love.graphics
     local w = love.graphics.getWidth()
     UI.clock = love.timer.getTime()
-    
+    local delta=love.timer.getDelta and love.timer.getDelta() or 0.016
+    for _,fx in pairs(skin_fx) do fx.time=math.max(0,fx.time-delta) end
     require("systems.space_scene").draw_background(game, {x = 0, y = 0, zoom = 0.5})
     update_random_preview()
     
     UI.arrows = {}
+    skin_hit = {}
     draw_side(g, game, "player", show_y("player"), UI.bar == "player")
     draw_side(g, game, "enemy", show_y("enemy"), UI.bar == "enemy")
     draw_vs(g, w, (show_y("player") + SHOW_H + show_y("enemy")) / 2)
