@@ -62,13 +62,15 @@ function V.run()
     assert(shuttle.state=="idle" and shuttle:distance_to(base)>150,"supply ship leaves mother hull and stays idle")
     local minerals=Game.new();assert(Manager.load_level("level_01.tbl",minerals))
     local Economy=require("systems.economy")
+    minerals.economy.credits=2500
     assert(Economy.enqueue(minerals,"collector"));Economy.update(minerals,25)
     local node=minerals.minerals[1]
     assert(node.station and node.station.alive,"station placed on mineral node")
     node.remaining=2
     local credits=minerals.economy.credits
     Economy.update(minerals,1)
-    assert(node.remaining==0 and minerals.economy.credits==credits+5,"finite mineral yield")
+    -- 基础收入 9/s，枯竭矿点本次只贡献剩余 2 点。
+    assert(node.remaining==0 and minerals.economy.credits==credits+11,"finite mineral yield")
     local station=node.station;station.alive=false
     node.remaining=100
     assert(require("systems.minerals").available(minerals)==node,"destroyed station frees mine")

@@ -38,6 +38,25 @@ local function team_groups(game,team_id)
     local d=team_data(team_id)
     return (type(d.groups)=="table") and d or nil
 end
+local function say_latest(slot,text,kind,life)
+    if not slot then return end
+    slot.queue={}
+    Slots.say(slot,text,kind,life)
+end
+-- 统一左右手发言入口：role 始终表示说话人的真实职位，screen_side 只由绘制层决定。
+function Advisor.say_hand(game, side, role, text, kind, life, replace)
+    if text==nil or tostring(text)=="" then return false end
+    local slot
+    if side=="player" then
+        slot=(role=="right") and game.researcher or game.advisor
+    else
+        local l=game.logistics or {}
+        slot=(role=="right") and l.almo or l.tact
+    end
+    if not slot then return false end
+    if replace then Slots.replace(slot,tostring(text),kind,life) else say_latest(slot,tostring(text),kind,life) end
+    return true
+end
 local function commander_name(team_id)
     local cfg=Registry.load(team_id).team or {}
     local id=tonumber(cfg.commander)
@@ -66,7 +85,7 @@ function Advisor.opening_scene(game)
     local function add(line,side)
         if type(line)=="string" then line={text=line} end
         if type(line)~="table" or not line.text then return end
-        line.text=scene_text(line.text,game,side)
+        local rendered_text=scene_text(line.text,game,side)
         local cfg=Registry.load(side=="enemy" and game.enemy_team_id or game.player_team_id).team or {}
         local left_id=tonumber(cfg.left)
         local right_id=tonumber(cfg.right)
@@ -75,15 +94,15 @@ function Advisor.opening_scene(game)
         local screen_side
         if side=="enemy" then screen_side=(id==right_id) and "left" or "right"
         else screen_side=(id==right_id) and "right" or "left" end
-        out[#out+1]={id=id,text=line.text,kind=line.kind or "idle",duration=line.duration,team=(side=="enemy") and 1 or 0,team_id=(side=="enemy") and game.enemy_team_id or game.player_team_id,screen_side=screen_side}
+        out[#out+1]={id=id,text=rendered_text,kind=line.kind or "idle",duration=line.duration,team=(side=="enemy") and 1 or 0,team_id=(side=="enemy") and game.enemy_team_id or game.player_team_id,screen_side=screen_side}
     end
     for i=1,n do add(a[i],"player"); add(b[i],"enemy") end
     return out
 end
 
 local warn_text={
-    default="司令，%s 装甲告警。先脱离火线，再安排维修。",
-    [25]="卡兹亚君，%s 装甲不足三成！先撤退，再安排维修。",
+    default="检测到%s装甲告警。先脱离火线，再安排维修。",
+    [25]="%s装甲不足三成！卡兹亚君，先撤退，再安排维修。",
 }
 local loss_text={
     default="队形散了才会被抓住破绽。行动结束后逐条复盘。",
@@ -215,6 +234,11 @@ end
 function Advisor.say(game,text,kind,life)
     local a=game.advisor
     if not a then return end
+    if a.panel_active then
+        a.panel_active=false;a.panel_close_at=nil
+        Slots.replace(a,text,kind,life)
+        return
+    end
     if a.tutorial then
         -- 教学步骤必须立刻替换，不能排队，否则指引滞后于操作。
         Slots.replace(a,text,kind,life or 10)
@@ -226,6 +250,11 @@ function Advisor.update(game,dt)
     for _,slot in pairs(game.logistics or {}) do Slots.update(slot,dt) end
     local a=game.advisor
     if not a then return end
+    if a.panel_active and a.panel_close_at and (game.level_time or 0)>=a.panel_close_at then
+        Slots.clear(a)
+        a.panel_active=false
+        a.panel_close_at=nil
+    end
     Slots.update(a,dt)
     a.clock=a.clock+dt
     if a.tutorial then
@@ -261,7 +290,7 @@ function Advisor.update(game,dt)
         end
         return
     end
-    if a.life>0 or game:is_paused() or require("systems.mission_script").busy(game) then return end
+    if (a.life>0 and not a.panel_active) or game:is_paused() or require("systems.mission_script").busy(game) then return end
     local Pilots=require("ui.pilots")
     local logistics=game.logistics or {}
     if not a.opened and (game.level_time or 0)>2 then
@@ -306,6 +335,13 @@ function Advisor.update(game,dt)
                 or warn_text[a.unit.character_id] or warn_text.default,u.name),"hit")
             return
         end
+        if u.max_energy and u.energy/u.max_energy<0.15 and (not u.energy_warn or game.level_time-u.energy_warn>25) then
+            u.energy_warn=game.level_time
+            local line=(advisor_lines(game,game.player_team_id).left and advisor_lines(game,game.player_team_id).left.energy)
+                or "%s能量不足，建议暂时脱离火线。"
+            Advisor.say(game,string.format(line,u.name or "当前机体"),"failed")
+            return
+        end
     end
     local n=#game:get_enemy_units(game.player_team)
     if n<a.enemy_count then
@@ -345,12 +381,12 @@ function Advisor.update(game,dt)
             local player_round=(egc==0) or (pgc>0 and math.random()<0.65)
             if player_round and pgc>0 then
                 local gp=pg.groups[math.random(pgc)]
-                if gp.left and game.advisor then Slots.say(game.advisor,gp.left,"idle") end
-                if gp.right and game.researcher then Slots.say(game.researcher,gp.right,"idle") end
+                Advisor.say_hand(game,"player","left",gp.left,"idle")
+                Advisor.say_hand(game,"player","right",gp.right,"idle")
             elseif egc>0 then
                 local ge=eg.groups[math.random(egc)]
-                if ge.left and logistics.tact then Slots.say(logistics.tact,ge.left,"idle") end
-                if ge.right and logistics.almo then Slots.say(logistics.almo,ge.right,"idle") end
+                Advisor.say_hand(game,"enemy","left",ge.left,"idle")
+                Advisor.say_hand(game,"enemy","right",ge.right,"idle")
             end
         else
             local all=game:get_units_by_team(game.player_team)
@@ -393,9 +429,9 @@ local function draw_enemy_hand(slot,side)
     g.push("all")
     g.setColor(1,1,1,fade)
     if side=="left" then
-        g.draw(img,265+78-slide,g.getHeight()-30,0,s,s,img:getWidth()/2,img:getHeight())
+        g.draw(img,343-slide,g.getHeight()-30,0,s,s,img:getWidth()/2,img:getHeight())
         g.pop()
-        require("ui.comms").bubble(slot.unit,slot.text,slot.kind,265,g.getHeight()-166,310,slot.age,slot.life,48,true)
+        require("ui.comms").bubble(slot.unit,slot.text,slot.kind,410,g.getHeight()-166,310,slot.age,slot.life,48,true)
     else
         g.draw(img,g.getWidth()-70+slide,g.getHeight()-30,0,s,s,img:getWidth()/2,img:getHeight())
         g.pop()
@@ -406,8 +442,11 @@ function Advisor.draw(game)
     local research=game.researcher and game.researcher.life>0 and game.researcher.text~=""
     if research then draw_researcher(game) end
     local logistics=game.logistics or {}
-    draw_enemy_hand(logistics.almo,"left")   -- 敌方右手→我方左手位
-    draw_enemy_hand(logistics.tact,"right")  -- 敌方左手→我方右手位
+    -- 槽位共享时我方优先：对应我方角色正在说话，敌方同侧暂不绘制，避免重叠。
+    local player_left_busy=game.advisor and game.advisor.life>0 and game.advisor.text~=""
+    local player_right_busy=game.researcher and game.researcher.life>0 and game.researcher.text~=""
+    if not player_left_busy then draw_enemy_hand(logistics.almo,"left") end   -- 敌方右手→左槽位
+    if not player_right_busy then draw_enemy_hand(logistics.tact,"right") end  -- 敌方左手→右槽位
     if research and love.graphics.getWidth()<1250 then return end
     local a=game.advisor
     if not a or a.life<=0 then return end

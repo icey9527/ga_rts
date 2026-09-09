@@ -30,7 +30,7 @@ function P.set(key,value)
 end
 function P.apply(unit)
     if unit.game and unit.team==unit.game.player_team then
-        unit.auto_skill=P.get("auto_skill_"..unit.character_id,false)
+        unit.auto_skill=P.get("auto_skill_all",false) or P.get("auto_skill_"..unit.character_id,false)
     end
 end
 return P

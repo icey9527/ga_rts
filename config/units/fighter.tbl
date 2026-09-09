@@ -18,6 +18,19 @@ projectile_speed = 470
 radius = 14
 sprite_color = {100, 255, 100}
 
+[weapon.main]
+type = "ranged"
+range = 360
+damage = 20
+count = 2
+
+[weapon.machine_gun]
+type = "ranged"
+range = 220
+damage = 5
+cooldown = 0.18
+count = 3
+
 [skill]
 type = "rapid_fire"
 attack_multiplier = 1.7

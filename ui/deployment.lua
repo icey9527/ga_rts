@@ -23,6 +23,7 @@ function UI.list()
         local ok, ids = pcall(Registry.playable_ids)
         local filtered = (ok and type(ids) == "table") and ids or {}
         if #filtered == 0 then filtered[1] = "random" end
+        for i=#filtered,1,-1 do if filtered[i]=="random" then table.remove(filtered,i) end end
         filtered[#filtered + 1] = "random"  -- 随机永远排在最末尾
         UI._list = filtered
     end
@@ -33,6 +34,8 @@ function UI.reset()
     UI._list = nil
     UI.player, UI.enemy, UI.bar = 1, 2, "player"
     skin_fx = {player={time=0,old=nil,new=nil,current=nil}, enemy={time=0,old=nil,new=nil,current=nil}}
+    UI.anim = {player={at=-10,dir=1}, enemy={at=-10,dir=1}}
+    UI.random_preview, UI._preview_step = nil, nil
 end
 
 function UI.player_id() return UI.list()[UI.player] end
@@ -75,7 +78,7 @@ local function draw_standing(g, team_id, char_id, cx, anchor_y, height, anchor, 
         g.pop()
         local size = math.floor(height * 0.62)
         local ay = anchor == "top" and anchor_y or anchor_y - height
-        Pilots.draw({character_id = char_id, team_id = team_id}, cx - size / 2, ay, size, size, "bare")
+        Pilots.draw({character_id = char_id, team_id = team_id, skin = skin}, cx - size / 2, ay, size, size, "bare")
     end
 end
 
@@ -227,13 +230,13 @@ local function draw_side(g, game, which, y0, selected)
 
     -- 指挥官 (190x250) & 左右手 (170x190) - 左右位置保持一致，不做水平翻转
     local sf=skin_fx[which]
+    if sf and sf.team ~= id then
+        sf.team=id; sf.current=get_skin(which,id); sf.time=0; sf.old=nil; sf.new=nil
+    end
     local flip=(sf and sf.time>0) and math.min(1,sf.time/0.8) or 0
     -- 翻牌：绕水平中轴上下翻面，只压缩垂直方向，横向宽度保持不变。
     local flip_scale=flip>0 and math.max(0.04,math.abs(math.cos(flip*math.pi))) or 1
     local flip_progress = 1 - flip
-    if sf and sf.team ~= id then
-        sf.team=id; sf.current=get_skin(which,id); sf.time=0; sf.old=nil; sf.new=nil
-    end
     local display_skin = sf and sf.current
     if display_skin == nil then
         display_skin = get_skin(which, id)
@@ -342,8 +345,8 @@ end
 
 function UI.wheelmoved(dy, mx, my)
     local which = UI.bar
-    if my >= show_y("player") and my < show_y("player") + SHOW_H then which = "player" end
-    if my >= show_y("enemy") and my < show_y("enemy") + SHOW_H then which = "enemy" end
+    if my >= show_y("player") and my < show_y("player") + SHOW_H then which = "player"
+    elseif my >= show_y("enemy") and my < show_y("enemy") + SHOW_H then which = "enemy" end
     UI.cycle(which, dy > 0 and -1 or 1)
 end
 
@@ -364,12 +367,8 @@ function UI.cycle_skin(team_id, dir, target_which)
     local skins = skins_for(team_id)
     if not skins then return end
     local target = target_which
-    if not target then
-        for _, which in ipairs({"player", "enemy"}) do
-            if UI.list()[which=="player" and UI.player or UI.enemy]==team_id then target=which break end
-        end
-    end
-    local key = skin_pref_key(target or "player", team_id)
+    if target ~= "player" and target ~= "enemy" then return end
+    local key = skin_pref_key(target, team_id)
     local cur = (target and skin_fx[target].current) or Preferences.get(key, "default")
     if target and skin_fx[target].time > 0 then
         local progress=1-math.min(1,skin_fx[target].time/0.8)
@@ -380,21 +379,27 @@ function UI.cycle_skin(team_id, dir, target_which)
     local next_idx = ((idx - 1 + (dir or 1)) % #skins) + 1
     local next_skin=skins[next_idx]
     local saved=Preferences.set(key, next_skin)
+    if saved == false then return end
     if target then
+        skin_fx[target].team=team_id
         skin_fx[target].old=cur
         skin_fx[target].new=next_skin
         skin_fx[target].current=next_skin
     end
     if target then skin_fx[target].time=0.8 end
 end
-skin_label = function(team_id)
-    local cur = Preferences.get(skin_pref_key("player", team_id), "default")
+skin_label = function(team_id, which)
+    local cur = Preferences.get(skin_pref_key(which or "player", team_id), "default")
     return cur == "default" and "默认" or cur
 end
 
 function UI.click(x, y)
     local w = love.graphics.getWidth()
+    local click_side
+    if y >= show_y("player") and y < show_y("player") + SHOW_H then click_side="player"
+    elseif y >= show_y("enemy") and y < show_y("enemy") + SHOW_H then click_side="enemy" end
     for _,which in ipairs({"player","enemy"}) do
+        if click_side and which ~= click_side then goto continue_click_side end
         local id=UI.list()[which=="player" and UI.player or UI.enemy]
         if skins_for(id) then
             local y0 = show_y(which)
@@ -417,6 +422,7 @@ function UI.click(x, y)
                 return false
             end
         end
+        ::continue_click_side::
     end
     for _, group in pairs(UI.arrows) do
         for _, a in ipairs(group) do

@@ -10,6 +10,19 @@ attack_range = 520
 attack_cooldown = 1.65
 attack_type = "artillery"
 projectile_count = 2
+
+[weapon.main]
+type = "artillery"
+range = 520
+damage = 58
+count = 2
+
+[weapon.machine_gun]
+type = "ranged"
+range = 260
+damage = 7
+cooldown = 0.3
+count = 2
 burst_count = 1
 spread_angle = 0.24
 target_spread = 180

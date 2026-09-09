@@ -10,6 +10,8 @@ end
 function Slots.say(slot,text,kind,life)
     if not slot or slot.silenced or text == nil or tostring(text) == "" then return end
     text=tostring(text):gsub("%%s", "")
+    if slot.text==text then return end
+    for _,queued in ipairs(slot.queue or {}) do if queued.text==text then return end end
     local item={text=text,kind=kind or "idle",life=life or slot.default_life or 8}
     if not slot.life or slot.life<=0 or slot.text=="" then
         slot.text,slot.kind,slot.age,slot.life=item.text,item.kind,0,item.life

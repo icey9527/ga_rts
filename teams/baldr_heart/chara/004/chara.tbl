@@ -5,6 +5,7 @@ face=face
 hit=face
 chara=chara.png
 dialogue=dialogue.lua
+type=1
 face_normal=f_nagi_0101ak.png
 face_attack=f_nagi_0101ik.png
 face_idle=f_nagi_0101ak.png

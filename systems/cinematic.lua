@@ -28,7 +28,8 @@ function Cinema.draw(game)
     local g=love.graphics
     local w=g.getDimensions()
     -- 特写从通讯区下方开始，避免与常驻对话框重叠
-    local y=56+(#(game.reports or {}))*100+10
+    -- 特写区域固定在通讯区下方，普通对话增减时不跳动。
+    local y=306
     for _,c in ipairs(game.cutins or {}) do
         -- 敌方必杀：更小的红色特写，与青色我方演出区分。
         local width=c.enemy and 200 or 240
@@ -38,7 +39,12 @@ function Cinema.draw(game)
         local x=w-width-18-((game.economy and game.economy.open) and ECONOMY_SHIFT or 0)
         local img=require("ui.pilots").standing(c.unit)
         g.push("all")
-        g.setScissor(x-10,y,width+20,height)
+        local inset=c.enemy and 14 or 16
+        local function cutin_shape()
+            g.polygon("fill",x+inset,y,x+width,y,x+width-inset,y+height,x,y+height)
+        end
+        g.stencil(cutin_shape,"replace",1)
+        g.setStencilTest("equal",1)
         if c.enemy then
             g.setColor(0.12,0.03,0.05,0.78*a)
             g.polygon("fill",x+14,y,x+width,y,x+width-14,y+height,x,y+height)
@@ -50,25 +56,23 @@ function Cinema.draw(game)
             g.setColor(0.35,0.9,1,a);g.setLineWidth(2)
             g.line(x+16,y+1,x+width,y+1);g.line(x,y+height-2,x+width-16,y+height-2)
         end
+        -- 背景拖影覆盖整个梯形，立绘也处在这层动态纹理之上。
+        g.setBlendMode("add")
+        for j=1,8 do
+            local yy=y+(j*17+c.time*(c.enemy and 130 or 150))%height
+            g.setColor(c.enemy and 1 or 0.5,c.enemy and 0.32 or 0.85,c.enemy and 0.28 or 1,a*0.18)
+            g.line(x-20,yy,x+width+20,yy+(c.enemy and 24 or -28))
+        end
+        g.setBlendMode("alpha")
         if img then
             -- 自动适配：限宽 104、限高 portrait，取小缩放；顶部对齐保证露脸。
             g.setScissor(x,y,104,height)
             local scale=math.min(portrait/img:getHeight(),104/img:getWidth())
             g.setColor(1,1,1,a)
             g.draw(img,x+52-img:getWidth()*scale/2-(1-a)*60,y,0,scale,scale)
-            g.setScissor(x-10,y,width+20,height)
+            g.setScissor()
         else require("ui.pilots").draw(c.unit,x+18,y+16,56,"skill") end
-        g.setBlendMode("add")
-        for j=1,5 do
-            if c.enemy then
-                local yy=y+(j*19+c.time*130)%height
-                g.setColor(1,0.42,0.35,a*0.26);g.line(x+84,yy,x+width,yy+24)
-            else
-                local yy=y+(j*21+c.time*150)%height
-                g.setColor(0.5,0.85,1,a*0.24);g.line(x+90,yy,x+width,yy-28)
-            end
-        end
-        g.setBlendMode("alpha")
+        -- 横线只在立绘背后绘制，避免覆盖人物透明立绘的可见区域。
         g.setFont(require("core.fonts").get(15))
         if c.enemy then g.setColor(1,0.85,0.82,a) else g.setColor(1,1,1,a) end
         g.printf(c.reinforcement and "增援" or require("ui.pilots").profile(c.unit).name,x+108,y+24,width-115)
@@ -79,6 +83,7 @@ function Cinema.draw(game)
         else
             g.printf(require("systems.skill").label(c.unit),x+108,y+50,width-115)
         end
+        g.setStencilTest()
         g.pop()
         y=y+(c.enemy and 92 or 104)
     end

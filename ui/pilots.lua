@@ -6,8 +6,8 @@ local chara_cache={}
 local dialogue_cache={}
 
 local DEFAULT_TEAM="default"
-local FACE_WANTED=({hit="0008",lost="0008",failed="0008",attack="0001",skill="0001",idle="0002",praise="0002"})
-local FACE_GROUP=({hit="hit",lost="hit",failed="hit",attack="attack",skill="attack",idle="idle",praise="idle"})
+local FACE_WANTED=({hit="0008",lost="0008",failed="0008",energy="0008",supplied="0002",return_battle="0001",repair_done="0002",attack="0001",skill="0001",idle="0002",praise="0002"})
+local FACE_GROUP=({hit="hit",lost="hit",failed="hit",energy="hit",attack="attack",skill="attack",idle="idle",praise="idle"})
 
 local function team_id(unit)
     if unit and unit.team_id then return unit.team_id end
@@ -24,12 +24,8 @@ local function chara_info(team,id,skin_override)
     -- 皮肤：preferences 的 skin_<队伍> 指向 teams/<队伍>/skins/<名字>/，仅覆盖头像/立绘，
     -- 台词与角色数据仍读本体；缓存键含皮肤名，切换即时生效。
     local skin
-    local ok,pref=pcall(require,"systems.preferences")
-    if ok and team~="default" then
-        local scope="player"
-        if unit and unit.game and unit.team~=unit.game.player_team then scope="enemy" end
-        local s=skin_override or pref.get("skin_"..scope.."."..team,"default")
-        if type(s)=="string" and s~="" and s~="default" then skin=s end
+    if team~="default" and type(skin_override)=="string" and skin_override~="" and skin_override~="default" then
+        skin=skin_override
     end
     -- 动画翻牌会同时请求旧皮肤和新皮肤，缓存键必须包含显式覆盖值。
     local cache_skin = skin_override == "default" and "default" or (skin or "")
@@ -129,7 +125,7 @@ end
 function Pilots.profile(unit)
     local team=team_id(unit)
     local id=unit.character_id or 0
-    local info=chara_info(team,id) or chara_info(DEFAULT_TEAM,id)
+    local info=chara_info(team,id,unit.skin) or chara_info(DEFAULT_TEAM,id)
     return {name=(info and info.name) or tostring(id),face=id,team=info and team or nil}
 end
 
@@ -265,7 +261,7 @@ function Pilots.line(unit,kind,fallback)
     end
     if side=="enemy" and not list then return nil end
     if not list then
-        local defaults={command="指令确认，正在执行。",attack="目标确认，开始攻击。",hit="机体受损，请求支援。",lost="通讯中断……",failed="目标无效，请重新指定。",skill="特殊装备启动。",idle="正在监视周边空域。",praise="目标已击破，保持警戒。"}
+        local defaults={command="指令确认，正在执行。",attack="目标确认，开始攻击。",hit="机体受损，请求修理。",energy="能量不足，准备返航补给。",supplied="补给完成，重新加入战斗。",return_battle="重返战场，继续攻击。",repair_done="维修完成，目标机体可以继续作战。",lost="通讯中断……",failed="目标无效，请重新指定。",skill="特殊装备启动。",idle="正在监视周边空域。",praise="目标已击破，保持警戒。"}
         local out=defaults[kind] or fallback
         return out
     end

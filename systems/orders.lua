@@ -8,7 +8,7 @@ function Orders.issue(game,units,action,target,x,y)
         local valid=u.alive and u.team==game.player_team and u.state~="disabled" and u.unit_type~="collector" and not u.objective_ship
         if action=="attack" then valid=valid and u.attack_damage>0 and (not target or target.team~=u.team)
         elseif action=="follow" then valid=valid and target and target.alive and target.team==u.team and target~=u
-        elseif action=="repair" then valid=valid and target and target.alive and target.team==u.team and target~=u and target.hp<target.max_hp and (u.unit_type=="repair" or u.unit_type=="mothership")
+        elseif action=="repair" then valid=valid and target and target.alive and target.team==u.team and target~=u and target.unit_type~="mothership" and target.hp<target.max_hp and (u.unit_type=="repair" or u.unit_type=="mothership")
         elseif action~="move" then valid=false end
         if valid then
             u.attack_target,u.follow_target,u.repair_target,u.target_pos,u.attack_move=nil,nil,nil,nil,nil

@@ -59,6 +59,8 @@ end
 
 function Game:report_event(unit,kind,text)
     if not unit then return end
+    -- 采集站是无人设施，不显示驾驶员通讯或战斗播报。
+    if unit.unit_type == "collector" then return end
     local enemy=unit.team~=self.player_team
     if kind=="lost" and not unit.loss_recorded then
         unit.loss_recorded=true
@@ -67,9 +69,13 @@ function Game:report_event(unit,kind,text)
     if enemy and (kind=="command" or kind=="failed" or kind=="skill") then return end
     unit.report_times = unit.report_times or {}
     local last = unit.report_times[kind] or -100
+    -- 同一角色所有事件共用最小发言间隔，避免受击/充能/释放在同一帧连播三句。
+    local global_last = unit.report_global_last or -100
+    if self.level_time - global_last < 0.5 then return end
     local urgent = kind == "lost" or kind == "failed"
     if self.level_time-last < (enemy and 14 or (urgent and 3 or 10)) then return end
     unit.report_times[kind] = self.level_time
+    unit.report_global_last = self.level_time
     local Pilots=require("ui.pilots")
     self.reports=self.reports or {}
     local line=Pilots.line(unit,kind,text)
@@ -241,7 +247,10 @@ function Game:update(dt,real_dt)
         local Unit = require("entities.unit")
         for i = #self.pending_waves, 1, -1 do
             local w = self.pending_waves[i]
-            if self.level_time >= (w.time or 0) then
+            local enemy_wave=(w.team or 1)~=self.player_team
+            if enemy_wave and require("systems.preferences").get("disable_enemy_reinforcements",false) then
+                table.remove(self.pending_waves,i)
+            elseif self.level_time >= (w.time or 0) then
                 local first_spawned
                 for n = 1, (w.count or 1) do
                     local angle = math.random() * math.pi * 2

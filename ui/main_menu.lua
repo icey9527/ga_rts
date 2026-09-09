@@ -14,6 +14,9 @@ function MainMenu.new(level_names, high_scores)
         clock = 0,
         confirm = false,
         confirm_rects = {},
+        page = "home",
+        menu_rects = {},
+        setting_rects = {},
     }
     setmetatable(self, {__index = MainMenu})
     return self
@@ -58,7 +61,7 @@ end
 
 function MainMenu:keypressed(key)
     -- ESC 不再直接退出：先弹确认，回车才真正退出，防止误触。
-    if key == "escape" then
+    if key == "escape" and self.page == "home" then
         self.confirm = not self.confirm
         return nil
     end
@@ -66,6 +69,35 @@ function MainMenu:keypressed(key)
         if key == "return" or key == "space" then return "quit" end
         return nil
     end
+    if self.page == "home" then
+        if key == "up" then self.selected=math.max(1,self.selected-1)
+        elseif key == "down" then self.selected=math.min(5,self.selected+1)
+        elseif key == "return" or key == "space" then
+            local actions={"levels","story","preview","settings","quit"}
+            local a=actions[self.selected]
+            if a=="levels" then self.page="levels"; self.selected=1
+            elseif a=="settings" then self.page="settings"; self.selected=1
+            elseif a=="quit" then self.confirm=true
+            else return nil
+            end
+        end
+        return nil
+    elseif self.page == "settings" then
+        local P=require("systems.preferences")
+        if key=="escape" then self.page="home";self.selected=1
+        elseif key=="left" or key=="right" then
+            local d=key=="left" and -0.1 or 0.1
+            local v=math.max(0,math.min(1,P.get("volume",0.9)+d)); P.set("volume",math.floor(v*10+0.5)/10)
+        elseif key=="return" or key=="space" then
+            if self.selected==2 then P.set("auto_skill_all",not P.get("auto_skill_all",false))
+            elseif self.selected==3 then P.set("disable_enemy_reinforcements",not P.get("disable_enemy_reinforcements",false))
+            elseif self.selected==4 then P.values={};P.save()
+            end
+        elseif key=="up" then self.selected=math.max(1,self.selected-1)
+        elseif key=="down" then self.selected=math.min(4,self.selected+1)
+        end
+        return nil
+    elseif self.page == "levels" and key=="escape" then self.page="home";self.selected=1;return nil end
     if key == "return" or key == "space" then
         if #self.level_names > 0 then return "start", self.selected end
     elseif key == "up" then
@@ -124,6 +156,20 @@ function MainMenu:mousepressed(mx, my, button)
         self.confirm=false
         return nil
     end
+    if self.page=="home" then
+        for i,r in ipairs(self.menu_rects) do if mx>=r[1] and mx<=r[1]+r[3] and my>=r[2] and my<=r[2]+r[4] then
+            self.selected=i; if i==1 then self.page="levels";self.selected=1 elseif i==4 then self.page="settings";self.selected=1 elseif i==5 then self.confirm=true end; return nil
+        end end
+        return nil
+    elseif self.page=="settings" then
+        local P=require("systems.preferences")
+        for i,r in ipairs(self.setting_rects) do if mx>=r[1] and mx<=r[1]+r[3] and my>=r[2] and my<=r[2]+r[4] then
+            if i==1 then P.set("volume",math.max(0,math.min(1,(mx-r[1])/r[3]))) elseif i==2 then P.set("auto_skill_all",not P.get("auto_skill_all",false)) elseif i==3 then P.set("disable_enemy_reinforcements",not P.get("disable_enemy_reinforcements",false)) elseif i==4 then P.values={};P.save() end
+            return nil
+        end end
+        if my>love.graphics.getHeight()-70 then self.page="home" end
+        return nil
+    elseif self.page=="levels" and my<120 then self.page="home";return nil end
     if self:cycle_skin(mx,my) then return nil end
     local visible_h = self.visible * self.item_h
     if my >= self.list_y and my <= self.list_y + visible_h and mx >= 150 and mx <= love.graphics.getWidth() - 150 then
@@ -138,6 +184,25 @@ function MainMenu:draw()
     local font_big = Fonts.get(36)
     local font_med = Fonts.get(19)
     local font_sm = Fonts.get(16)
+    if self.page=="home" then
+        love.graphics.clear(0.025,0.035,0.075)
+        love.graphics.setFont(font_big);love.graphics.setColor(1,0.90,0.30);love.graphics.printf("深空指挥",0,52,w,"center")
+        love.graphics.setFont(font_sm);love.graphics.setColor(0.72,0.78,0.92);love.graphics.printf("DEEP SPACE COMMAND",0,98,w,"center")
+        local labels={"关卡模式","剧情模式（未开放）","必杀技预览（准备中）","设置","退出游戏"};self.menu_rects={}
+        for i,label in ipairs(labels) do local bw,bh=420,54;local x=(w-bw)/2;local y=160+(i-1)*70;self.menu_rects[i]={x,y,bw,bh};local on=i==self.selected
+            love.graphics.setColor(on and 0.10 or 0.06,on and 0.22 or 0.10,on and 0.36 or 0.17,0.95);love.graphics.rectangle("fill",x,y,bw,bh,8,8)
+            love.graphics.setColor(on and 0.35 or 0.18,on and 0.65 or 0.30,on and 0.95 or 0.45,0.9);love.graphics.rectangle("line",x,y,bw,bh,8,8)
+            love.graphics.setColor(i==2 and 0.45 or 0.9,i==2 and 0.48 or 0.92,i==2 and 0.55 or 0.98,1);love.graphics.printf(label,x,y+15,bw,"center")
+        end
+        love.graphics.setColor(0.55,0.60,0.70);love.graphics.printf("上下选择 | 回车确认",0,h-42,w,"center");return
+    elseif self.page=="settings" then
+        love.graphics.clear(0.025,0.035,0.075);love.graphics.setFont(font_big);love.graphics.setColor(1,0.90,0.30);love.graphics.printf("设置",0,62,w,"center")
+        local P=require("systems.preferences");local v=P.get("volume",0.9);local auto=P.get("auto_skill_all",false);local no_enemy=P.get("disable_enemy_reinforcements",false);self.setting_rects={}
+        love.graphics.setFont(font_med);love.graphics.setColor(0.9,0.92,1);love.graphics.print("主音量",180,170);local bx,by,bw=360,178,360;self.setting_rects[1]={bx,by,bw,24};love.graphics.setColor(0.12,0.16,0.24);love.graphics.rectangle("fill",bx,by,bw,10,4,4);love.graphics.setColor(0.35,0.72,0.95);love.graphics.rectangle("fill",bx,by,bw*v,10,4,4)
+        love.graphics.setColor(0.9,0.92,1);love.graphics.print("全员自动释放必杀技",180,245);self.setting_rects[2]={180,238,500,48};love.graphics.setColor(auto and 0.25 or 0.18,auto and 0.70 or 0.24,auto and 0.42 or 0.30,1);love.graphics.rectangle("fill",620,240,60,30,6,6);love.graphics.setColor(1,1,1);love.graphics.printf(auto and "开" or "关",620,246,60,"center")
+        love.graphics.setColor(0.9,0.92,1);love.graphics.print("禁止敌方增援",180,305);self.setting_rects[3]={180,298,500,48};love.graphics.setColor(no_enemy and 0.25 or 0.18,no_enemy and 0.70 or 0.24,no_enemy and 0.42 or 0.30,1);love.graphics.rectangle("fill",620,300,60,30,6,6);love.graphics.setColor(1,1,1);love.graphics.printf(no_enemy and "开" or "关",620,306,60,"center")
+        self.setting_rects[4]={250,380,300,48};love.graphics.setColor(0.16,0.28,0.42);love.graphics.rectangle("fill",250,380,300,48,8,8);love.graphics.setColor(0.9,0.92,1);love.graphics.printf("恢复默认",250,393,300,"center");love.graphics.setColor(0.55,0.60,0.70);love.graphics.printf("ESC 返回主菜单",0,h-42,w,"center");return
+    end
     local visible_h = self.visible * self.item_h
     local total_h = #self.level_names * self.item_h
 

@@ -17,7 +17,7 @@ end
 local P = {}
 P.__index = P
 
-function Projectile.basic(x, y, tx, ty, dmg, speed, target, z)
+function Projectile.basic(x, y, tx, ty, dmg, speed, target, z, style)
     local dx, dy = tx - x, ty - y
     local dist = math.sqrt(dx*dx + dy*dy)
     if dist == 0 then dist = 1 end
@@ -36,10 +36,11 @@ function Projectile.basic(x, y, tx, ty, dmg, speed, target, z)
         alive = true,
         life = 3.0,
         trail = {},
+        style = style or "main_gun",
     }, P)
 end
 
-function Projectile.artillery(x, y, tx, ty, dmg, splash, speed, z, team)
+function Projectile.artillery(x, y, tx, ty, dmg, splash, speed, z, team, style)
     local dx, dy = tx - x, ty - y
     local dist = math.sqrt(dx*dx + dy*dy)
     if dist == 0 then dist = 1 end
@@ -59,10 +60,11 @@ function Projectile.artillery(x, y, tx, ty, dmg, splash, speed, z, team)
         alive = true,
         life = 3.0,
         trail = {},
+        style = style or "artillery",
     }, P)
 end
 
-function Projectile.missile(x, y, target, dmg, speed, z)
+function Projectile.missile(x, y, target, dmg, speed, z, style)
     return setmetatable({
         x = x, y = y,
         vx = 0, vy = 0,
@@ -80,6 +82,7 @@ function Projectile.missile(x, y, target, dmg, speed, z)
         life = 8.0,
         trail = {},
         smoke_timer = 0,
+        style = style or "missile",
     }, P)
 end
 
@@ -182,35 +185,43 @@ function P:draw()
     local smoke = get_image("assets/effects/beaml.bmp.png")
     local flash = get_image("assets/effects/beams.bmp.png")
 
+    local style=self.style or (self.homing and "missile" or "main_gun")
+    local colors={main_gun={1,0.86,0.35},machine_gun={0.35,0.9,1.0},missile={1,0.42,0.12},artillery={1,0.55,0.18},beam={0.7,0.9,1.0}}
+    local col=colors[style] or colors.main_gun
     for i = 1, #self.trail do
         local t = self.trail[i]
         local k = i / #self.trail
-        local alpha = (self.homing and 0.22 or 0.12) * k
-        local radius = self.homing and (7 * (1 - k) + 2) or 2
+        local alpha = (self.homing and 0.28 or (style=="machine_gun" and 0.28 or 0.16)) * k
+        local radius = self.homing and (7 * (1 - k) + 2) or (style=="artillery" and 4 or 2)
         if smoke then
-            love.graphics.setColor(0.75, 0.82, 0.88, alpha * 2.0)
+            love.graphics.setColor(col[1], col[2], col[3], alpha * 2.0)
             local s = radius / math.max(1, smoke:getWidth()) * 2.8
             love.graphics.draw(smoke, t.x, t.y - (t.z or 0) * 0.22, 0, s, s, smoke:getWidth() / 2, smoke:getHeight() / 2)
         else
-            love.graphics.setColor(0.55, 0.66, 0.72, alpha)
+            love.graphics.setColor(col[1], col[2], col[3], alpha)
             love.graphics.circle("fill", t.x, t.y - (t.z or 0) * 0.22, radius)
         end
     end
 
-    if self.homing then
+    if style=="beam" then
+        love.graphics.setColor(col[1],col[2],col[3],0.95)
+        love.graphics.setLineWidth(3);love.graphics.line(self.x,y,self.target_pos[1],self.target_pos[2]);love.graphics.setLineWidth(1)
+    elseif self.homing then
         if flash then
-            love.graphics.setColor(1, 0.62, 0.24, 0.92)
+            love.graphics.setColor(col[1], col[2], col[3], 0.92)
             local s = 18 / math.max(1, flash:getWidth())
             love.graphics.draw(flash, self.x, y, love.timer.getTime() * 6, s, s, flash:getWidth() / 2, flash:getHeight() / 2)
         else
             love.graphics.setColor(1, 0.48, 0.18, 0.45)
             love.graphics.circle("fill", self.x, y, 8)
         end
-        love.graphics.setColor(1, 0.92, 0.35, 0.96)
-        love.graphics.circle("fill", self.x, y, 3.5)
+        love.graphics.setColor(col[1], col[2], col[3], 0.96)
+        love.graphics.circle("fill", self.x, y, style=="artillery" and 5 or 3.5)
     else
-        love.graphics.setColor(1, 0.82, 0.25, 0.92)
-        love.graphics.circle("fill", self.x, y, 3)
+        love.graphics.setColor(col[1], col[2], col[3], 0.92)
+        if style=="machine_gun" then love.graphics.setLineWidth(2);love.graphics.line(self.x-7,y,self.x+7,y);love.graphics.setLineWidth(1)
+        elseif style=="artillery" then love.graphics.circle("fill",self.x,y,5)
+        else love.graphics.circle("fill", self.x, y, 3) end
     end
     love.graphics.setColor(1, 1, 1, 1)
 end

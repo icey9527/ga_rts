@@ -44,7 +44,17 @@ return {
     failed = {
       "诶——？做不到啦这个！",
       "咦？目标不对吧！"
-    }
+    },
+    energy = {
+      "能量不够了啦！回去补！",
+    },
+    supplied = {
+      "满能量！出发！",
+    },
+    return_battle = {
+      "枫名，回来啦！",
+    },
+
   },
   enemy = {
     attack = {

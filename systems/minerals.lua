@@ -23,7 +23,8 @@ function M.update(game,dt)
                 if node then node.station=u;u.mineral_node=node end
             end
             if node and u:dist_to_pos(node.x,node.y)<140 then
-                local amount=math.min(node.remaining,4*dt)
+                -- 采集站是达到约 90 秒生产节奏的增量来源，保持中等速率避免资源爆发。
+                local amount=math.min(node.remaining,8*dt)
                 node.remaining=node.remaining-amount;income=income+amount
             end
         end

@@ -250,7 +250,7 @@ function AI:_command_repair(unit, my, enemy, game)
     -- find damaged allies, prioritize by importance
     local damaged = {}
     for _, u in ipairs(my) do
-        if u ~= unit and u.hp < u.max_hp * 0.85 then
+        if u ~= unit and u.unit_type~="mothership" and u.hp < u.max_hp * 0.85 then
             local priority = (1 - u.hp/u.max_hp) * 100
             if u.unit_type == "mothership" then priority = priority + 500 end
             if u.unit_type == "heavy" then priority = priority + 100 end

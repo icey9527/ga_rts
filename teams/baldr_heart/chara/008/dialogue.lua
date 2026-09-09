@@ -44,7 +44,17 @@ return {
     failed = {
       "办不到。理由，不便多说。",
       "……目标有误。"
-    }
+    },
+    energy = {
+      "……能源，不足了。",
+    },
+    supplied = {
+      "……补给完成。",
+    },
+    return_battle = {
+      "……回来了。",
+    },
+
   },
   enemy = {
     attack = {

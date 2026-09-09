@@ -562,7 +562,7 @@ local function command_color(action, target)
         if target.team ~= game.player_team then return 1.0, 0.16, 0.12, 0.92 end
         return 0.18, 1.0, 0.35, 0.92
     end
-    if action == "move" then return 0.85, 0.92, 1.0, 0.82 end
+    if action == "move" then return 0.25, 0.65, 1.0, 0.82 end
     if action == "attack" then return 1.0, 0.22, 0.14, 0.72 end
     if action == "repair" or action == "follow" then return 0.20, 1.0, 0.36, 0.72 end
     return 1, 1, 1, 0.75
@@ -604,6 +604,21 @@ local function draw_command_indicators()
         local ex, ey = camera:world_to_screen(f.x2, f.y2)
         draw_arrow_screen(sx, sy, ex, ey, f.r, f.g, f.b, a * 0.72, 3)
     end
+    local tracked=camera.follow_target
+    if tracked and tracked.alive then
+        local action,target
+        if tracked.attack_target then action,target="attack",tracked.attack_target
+        elseif tracked.repair_target then action,target="repair",tracked.repair_target
+        elseif tracked.follow_target then action,target="follow",tracked.follow_target
+        elseif tracked.target_pos then action,target="move",{x=tracked.target_pos[1],y=tracked.target_pos[2]} end
+        if target then
+            local sx,sy=camera:world_to_screen(tracked.x,tracked.y-(tracked.z or 0)*0.22)
+            local ex,ey=camera:world_to_screen(target.x,target.y)
+            local ar,ag,ab=command_color(action,action=="move" and nil or target)
+            draw_arrow_screen(sx,sy,ex,ey,ar,ag,ab,0.80,3)
+        end
+    end
+
 
     if command_mode ~= "targeting" or #pending_command_units == 0 then return end
 
@@ -728,6 +743,7 @@ function hide_all_menus()
         require("systems.comms_slots").clear(game.advisor)
         game.advisor.panel_active=false
     end
+
     if command_mode ~= "targeting" then restore_command_pause() end
 end
 
@@ -862,6 +878,11 @@ function love.mousepressed(mx, my, button)
         end
 
         if command_mode == "targeting" then
+            -- 目标可以来自单位卡片，不能只依赖战场坐标命中。
+            local panel_action, panel_unit = unit_panel:handle_click(mx, my, game, 1)
+            if panel_unit and (panel_action=="select" or panel_action=="inspect" or panel_action=="select_and_menu" or panel_action=="consume") then
+                execute_targeted_command(mx,my,panel_unit); return
+            end
             execute_targeted_command(mx, my)
             return
         end
@@ -1075,6 +1096,7 @@ function show_context_menu(mx, my)
             if line and line~="" then
                 require("systems.comms_slots").replace(game.advisor,line,"idle",3600)
                 game.advisor.panel_active=true
+                game.advisor.panel_close_at=nil
             end
         end
     end
@@ -1091,6 +1113,10 @@ function show_context_menu(mx, my)
 end
 
 function execute_menu_action(action)
+    if game.advisor and game.advisor.panel_active then
+        game.advisor.panel_close_at=(game.level_time or 0)+3
+        game.advisor.life=math.min(game.advisor.life,3)
+    end
     if action=="skill_menu" then
         local u=game.selected_units[1]
         if u.unit_type=="repair" then
@@ -1157,9 +1183,9 @@ function execute_global_command(action)
     end
 end
 
-function execute_targeted_command(mx, my)
+function execute_targeted_command(mx, my, forced_target)
     local wx, wy = screen_to_extended_world(mx, my)
-    local target = Markers.pick(game,camera,mx,my) or game:get_unit_at(wx, wy, nil, camera.zoom)
+    local target = forced_target or Markers.pick(game,camera,mx,my) or game:get_unit_at(wx, wy, nil, camera.zoom)
     if command_action=="skill_target" then
         local success=false
         for _,u in ipairs(pending_command_units) do

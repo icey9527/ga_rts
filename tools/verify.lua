@@ -136,7 +136,7 @@ function Verify.run()
     e.economy.credits=3000
     local start=e.economy.credits
     assert(Economy.enqueue(e,"fighter"))
-    assert(e.economy.credits==start-180)
+    assert(e.economy.credits==start-1500)
     assert(Economy.cancel(e,1) and e.economy.credits==start,"queue refund")
     local n=#e.units
     assert(Economy.enqueue(e,"repair")); Economy.update(e,21)
@@ -149,6 +149,7 @@ function Verify.run()
     assert(Orders.issue(e,{repair},"follow",e:get_mothership(0),0,0)==1)
     assert(Orders.issue(e,{repair},"repair",enemy,0,0)==0,"repair rejects enemy repair")
     local hp=repair.max_hp
+    e.economy.credits=10000
     assert(Economy.enqueue(e,"armor")); Economy.update(e,29)
     assert(e.economy.armor==1 and repair.max_hp>hp,"upgrade applies to fleet")
     assert(Economy.enqueue(e,"fighter")); Economy.update(e,17)
@@ -157,7 +158,8 @@ function Verify.run()
     assert(e.units[#e.units].unit_type=="collector","station construction")
     local credits=e.economy.credits
     Economy.update(e,1)
-    assert(e.economy.credits==credits+7,"station income")
+    -- 基础收入 9/s，加上采集站 8/s。
+    assert(e.economy.credits==credits+17,"station income")
     assert(Economy.enqueue(e,"weapons"))
     local remain=e.economy.queue[1].remaining
     e:pause(); e:update(5)
@@ -222,6 +224,10 @@ function Verify.run()
     radiogame:report_event(rival,"command","ignored")
     assert(#(radiogame.reports or {})==0,"enemy command acknowledgements suppressed")
     radiogame:report_event(rival,"attack","")
+    do
+        local P=require("ui.pilots")
+        print("RADIO DBG team_id=",tostring(rival.team_id)," game=",tostring(rival.game~=nil)," reports=",#(radiogame.reports or {})," line=",tostring(P.line(rival,"attack","")))
+    end
     assert(#radiogame.reports==1 and radiogame.reports[1].unit==rival,"enemy taunt delivered")
     radiogame.reports={}
     for choice=1,2 do

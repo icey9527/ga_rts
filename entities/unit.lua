@@ -4,6 +4,13 @@ local atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 
 function Unit.new(x, y, team, cfg)
     local s = cfg.stats or cfg  -- accept both parsed TBL (with [stats]) and raw table
+    local configured_weapons={}
+    for section,weapon in pairs(cfg or {}) do
+        if type(section)=="string" and section:match("^weapon%.") and type(weapon)=="table" then
+            weapon.id=weapon.id or section:match("^weapon%.(.+)$")
+            configured_weapons[#configured_weapons+1]=weapon
+        end
+    end
     local u = {
         x = x, y = y,
         vx = 0, vy = 0,
@@ -17,8 +24,8 @@ function Unit.new(x, y, team, cfg)
         -- stats
         max_hp = s.max_hp or 100,
         hp = s.max_hp or 100,
-        max_energy = s.max_energy or 100,
-        energy = s.max_energy or 100,
+        max_energy = (s.max_energy or 100)*1.25,
+        energy = (s.max_energy or 100)*1.25,
         base_speed = s.speed or 150,
         speed = s.speed or 150,
         attack_damage = s.attack_damage or 10,
@@ -52,6 +59,8 @@ function Unit.new(x, y, team, cfg)
         -- timers
         attack_timer = 0,
         burst_queue = {},
+        -- 武器按机体类型配置；未配置时自动生成一门主炮，兼容现有单位表。
+        weapons = (#configured_weapons>0 and configured_weapons) or s.weapons or {{id="main",range=s.attack_range or 150,damage=s.attack_damage or 10,cooldown=s.attack_cooldown or 1.0,count=s.projectile_count or 1}},
         state_timer = 0,
 
         -- SP / skills
@@ -266,7 +275,13 @@ function Unit:_player_auto(dt, game)
     if self.auto_skill and self.sp >= self.max_sp then self:use_skill(game) end
 
     -- auto return for supply when energy low and idle
-    if self.energy < 5 and self.state ~= "returning" and self.state ~= "supplying" and self.unit_type ~= "mothership" then
+    if self.energy < 5 and self.state ~= "returning" and self.state ~= "supplying"
+       and self.unit_type ~= "mothership" and self.unit_type ~= "collector" then
+        if not self.energy_warn_report or game.level_time - self.energy_warn_report > 20 then
+            self.energy_warn_report = game.level_time
+            game:report_event(self, "energy", "能量不足，准备返航补给。")
+        end
+        self.supply_resume_target = self.attack_target
         local ms = self:find_mothership(game)
         if ms then
             self.state = "returning"
@@ -305,6 +320,10 @@ function Unit:_update_state(dt, game)
     elseif self.state == "undocking" then
         if not self.target_pos or self:_move_towards(self.target_pos[1],self.target_pos[2],self.speed*dt,game) then
             self.state="idle";self.state_timer=0;self.target_pos=nil;self.route=nil
+            if self.supply_resume_target and self.supply_resume_target.alive then
+                self.attack_target=self.supply_resume_target; self.supply_resume_target=nil; self.state="attacking"
+                game:report_event(self,"return_battle","重返战场，继续攻击。")
+            end
         end
     elseif self.state == "disabled" then
         -- can't act
@@ -341,8 +360,12 @@ function Unit:_state_attacking(dt, game)
 
     local dist = self:distance_to(self.attack_target)
 
-    -- fighters/scouts/interceptors use circle strafing
-    local strafe_types = {fighter=true, scout=true, interceptor=true, light=true}
+    -- 近中程战舰保持缠斗，不在射程内原地停死；远程炮舰和母舰继续保持阵位。
+    local strafe_types = {
+        fighter=true, scout=true, interceptor=true, light=true,
+        heavy=true, gunship=true, bomber=true, tiger=true, carrier=true,
+        missile_frigate=true,
+    }
     if strafe_types[self.unit_type] and dist <= self.attack_range + 120 then
         self.orbit_angle=atan2(self.y-self.attack_target.y,self.x-self.attack_target.x)
         self.state = "circle_strafing"
@@ -387,7 +410,7 @@ function Unit:_state_circle_strafing(dt, game)
 end
 
 function Unit:_state_repairing(dt, game)
-    if not self.repair_target or not self.repair_target.alive then
+    if not self.repair_target or not self.repair_target.alive or self.repair_target.unit_type=="mothership" then
         self.repair_target = nil
         self.state = "idle"
         return
@@ -401,9 +424,10 @@ function Unit:_state_repairing(dt, game)
     local dist = self:distance_to(self.repair_target)
     if dist <= self.repair_range then
         if self.energy > 0 then
-            local rate = self.repair_rate * dt
-            self.repair_target:heal(rate)
-            self.energy = math.max(0, self.energy - 3 * dt)
+            self.repair_target:heal(self.repair_target.max_hp)
+            self.energy = math.max(0, self.energy - 12)
+            game:report_event(self,"repair_done","维修完成，目标机体可以继续作战。")
+            self.repair_target=nil;self.state="idle"
         end
     else
         self:_move_towards(self.repair_target.x, self.repair_target.y, self.speed * dt, game)
@@ -461,8 +485,6 @@ function Unit:_state_supplying(dt, game)
     local ms = self:find_mothership(game)
     local cfg = (_G.SETTINGS and _G.SETTINGS.gameplay) or {}
     local sr = cfg.supply_range or 100
-    local rate = cfg.supply_rate or 80
-    local hp_rate = cfg.supply_hp_rate or 50
 
     if not ms or ms == self then
         self.state = "idle"
@@ -470,8 +492,8 @@ function Unit:_state_supplying(dt, game)
     end
     if self:distance_to(ms)>sr then self.state="returning";self.route=nil;return end
 
-    self.energy = math.min(self.energy + rate * dt, self.max_energy)
-    self.hp = math.min(self.hp + hp_rate * dt, self.max_hp)
+    self.energy = self.max_energy
+    self.hp = self.max_hp
 
     if self.energy >= self.max_energy and self.hp >= self.max_hp then
         local angle=(self.id or 1)*2.399963
@@ -479,6 +501,7 @@ function Unit:_state_supplying(dt, game)
         local x,y=game:find_clear_position(ms.x+math.cos(angle)*radius,ms.y+math.sin(angle)*radius,self.radius)
         self.state="undocking";self.state_timer=0
         self.attack_target=nil;self.attack_move=nil;self.follow_target=nil;self.repair_target=nil
+        game:report_event(self,"supplied","补给完成，重新加入战斗。")
         self.route=nil;self.burst_queue={};self.target_pos={x,y}
     end
 end
@@ -548,11 +571,11 @@ function Unit:_spawn_projectile(game, target, index, total)
         local Effect = require("entities.effect")
         game:add_effect(Effect.beam(self.x, self.y - (self.z or 0) * 0.22, target.x, target.y - (target.z or 0) * 0.22))
     elseif self.attack_type == "missile" then
-        game:add_projectile(Projectile.missile(self.x, self.y, target, dmg, self.projectile_speed, self.z or 0))
+        game:add_projectile(Projectile.missile(self.x, self.y, target, dmg, self.projectile_speed, self.z or 0, self.weapon_visual))
     elseif self.attack_type == "artillery" then
-        game:add_projectile(Projectile.artillery(self.x, self.y, tx, ty, dmg, self.splash_radius, self.projectile_speed, self.z or 0,self.team))
+        game:add_projectile(Projectile.artillery(self.x, self.y, tx, ty, dmg, self.splash_radius, self.projectile_speed, self.z or 0,self.team,self.weapon_visual))
     else
-        game:add_projectile(Projectile.basic(self.x, self.y, tx, ty, dmg, self.projectile_speed, target, self.z or 0))
+        game:add_projectile(Projectile.basic(self.x, self.y, tx, ty, dmg, self.projectile_speed, target, self.z or 0,self.weapon_visual))
     end
 end
 
@@ -581,22 +604,30 @@ function Unit:_try_attack(game)
     self.attack_timer = self.attack_cooldown
     self.energy = self.energy - cost
     game:report_event(self,"attack","目标进入射程，开始攻击。")
-    require("systems.audio").play("shot")
 
     local at = self.attack_target
-    local bursts = math.max(1, self.burst_count or 1)
-    for b = 1, bursts do
-        for i = 0, self.projectile_count - 1 do
-            if b == 1 then
-                self:_spawn_projectile(game, at, i, self.projectile_count)
-            else
-                table.insert(self.burst_queue, {
-                    target = at,
-                    index = i,
-                    total = self.projectile_count,
-                    delay = (b - 1) * (self.burst_delay or 0.06),
-                })
+    -- 每种武器独立检查射程和弹数；共用一次攻击节拍，避免一帧内无限连射。
+    for _,weapon in ipairs(self.weapons or {}) do
+        local range=weapon.range or self.attack_range
+        if self:distance_to(at)<=range then
+            local count=weapon.count or weapon.projectile_count or self.projectile_count
+            local damage=weapon.damage
+            local old_damage,old_count,old_type,old_speed,old_splash=self.attack_damage,self.projectile_count,self.attack_type,self.projectile_speed,self.splash_radius
+            if damage then self.attack_damage=damage end
+            self.projectile_count=count
+            self.attack_type=weapon.type or self.attack_type
+            self.weapon_visual=weapon.visual or weapon.id or self.attack_type
+            self.projectile_speed=weapon.projectile_speed or self.projectile_speed
+            self.splash_radius=weapon.splash_radius or self.splash_radius
+            require("systems.audio").play(weapon.sound or ({ranged="main_gun",missile="missile",artillery="artillery",beam="beam"})[self.attack_type] or "shot")
+            local bursts=math.max(1,weapon.burst_count or self.burst_count or 1)
+            for b=1,bursts do
+                for i=0,count-1 do
+                    if b==1 then self:_spawn_projectile(game,at,i,count)
+                    else table.insert(self.burst_queue,{target=at,index=i,total=count,delay=(b-1)*(weapon.burst_delay or self.burst_delay or 0.06)}) end
+                end
             end
+            self.attack_damage,self.projectile_count,self.attack_type,self.projectile_speed,self.splash_radius=old_damage,old_count,old_type,old_speed,old_splash
         end
     end
 
