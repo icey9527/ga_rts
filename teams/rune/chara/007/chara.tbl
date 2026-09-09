@@ -1,0 +1,8 @@
+[chara]
+id=007
+name=罗塞尔
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

@@ -11,7 +11,7 @@ function V.run()
             local file=string.format("level_%02d.tbl",n)
             assert(Manager.load_level(file,game));Mission.start(game,file)
             local waves=#game.pending_waves
-            Sim.deploy(game,choice,"spread")
+            Sim.deploy(game,choice==1 and "rune" or "moon",choice==1 and "moon" or "rune","spread")
             assert(#game.pending_waves>=waves,"deployment preserves mission waves")
             assert(game.objective and not Manager.check_victory(game),"mission starts incomplete")
             Mission.update(game,0)
@@ -115,7 +115,7 @@ function V.pacing()
     for n=1,10 do
         local game=Game.new();local file=string.format("level_%02d.tbl",n)
         assert(Manager.load_level(file,game));require("systems.mission_script").start(game,file)
-        require("systems.simulation").deploy(game,1,"spread")
+        require("systems.simulation").deploy(game,"rune","moon","spread")
         require("systems.mission_script").advance(game,true)
         local first_loss,result
         for _=1,3600 do

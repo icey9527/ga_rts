@@ -2,40 +2,73 @@ local Advisor={}
 local steps=require("levels.scripts.level_00").training
 local Slots=require("systems.comms_slots")
 
--- 按所选舰队切换顾问：卡兹亚队=可可+诺阿，塔克特队=雷斯特+阿尔茉。
--- 侧翼频道角色随之互换；台词按角色性格各自成文。
-local SQUAD_ADVISORS={
-    [1]={tactical=25,logistics=22,critic=21,cheer=26},
-    [2]={tactical=21,logistics=26,critic=25,cheer=22},
-}
+-- 顾问编制完全来自 teams/<队>/team.tbl：我方 left/right 坐战术与后勤位，
+-- 敌方队伍的 left/right 转任侧翼批评与鼓励频道。台词按角色性格各自成文。
+-- teams/<队>/advisor/dialogue.lua：开场词与左右手频道台词（{text,face} 兼容纯字符串）。
+local advisor_lines_cache={}
+local function advisor_lines(game,team_id)
+    team_id=team_id or (game and game.player_team_id) or "rune"
+    if advisor_lines_cache[team_id]~=nil then return advisor_lines_cache[team_id] end
+    local path="teams/"..team_id.."/advisor/dialogue.lua"
+    local data={}
+    if love.filesystem.getInfo(path) then
+        local src=love.filesystem.read(path)
+        local chunk=src and loadstring(src)
+        local ok,dat=pcall(chunk and chunk or function() return nil end)
+        if ok and type(dat)=="table" then data=dat end
+    end
+    advisor_lines_cache[team_id]=data
+    return data
+end
+
 local warn_text={
+    default="卡兹亚，%s 装甲告警。先脱离火线，再安排维修。",
     [25]="卡兹亚君，%s 装甲不足三成！先撤退，再安排维修。",
-    [21]="卡兹亚，%s 装甲告警。先脱离火线，再安排维修。",
 }
 local loss_text={
-    [21]="队形散了才会被抓住破绽。行动结束后逐条复盘。",
+    default="队形散了才会被抓住破绽。行动结束后逐条复盘。",
     [25]="卡兹亚君，队形散了才会被抓住破绽。复盘时逐条分析。",
 }
 local cheer_text={
+    default="目标击破。干得漂亮，保持这个节奏。",
     [26]="漂亮——！刚才的配合我全程记下来了！",
     [22]="目标击破。战斗数据已记录，保持这个节奏。",
 }
 local progress_text={
+    default="目标过半。按当前节奏，判定对我们有利。保持。",
     [26]="过半啦过半——！大家咬住节奏，胜利就在前面！",
     [22]="目标过半。按当前节奏，判定对我们有利。保持。",
 }
 
 function Advisor.apply_squad(game)
-    local set=SQUAD_ADVISORS[game.chosen_squad] or SQUAD_ADVISORS[1]
-    game.advisor_set=set
     if game.advisor and game.advisor.tutorial then return end
+    local set=game.advisor_set
+    local teams=game.advisor_teams
+    if not set or not teams then
+        local Registry=require("systems.pack_registry")
+        local pid=game.player_team_id or "rune"
+        local eid=game.enemy_team_id or "moon"
+        local pt=Registry.load(pid).team or {}
+        local et=Registry.load(eid).team or {}
+        set={
+            tactical=tonumber(pt.left) or 25,
+            logistics=tonumber(pt.right) or 22,
+            critic=tonumber(et.left) or 21,
+            cheer=tonumber(et.right) or 26,
+        }
+        teams={tactical=pid,logistics=pid,critic=eid,cheer=eid}
+    end
+    game.advisor_set=set
+    game.advisor_teams=teams
     if game.advisor then
+        game.advisor.unit.team_id=teams.tactical or pid
         game.advisor.unit.character_id=set.tactical
         game.advisor.text=""
         game.advisor.life=0
         game.advisor.queue={}
     end
     if game.researcher then
+        game.researcher.unit.team_id=teams.logistics or pid
         game.researcher.unit.character_id=set.logistics
         game.researcher.text=""
         game.researcher.life=0
@@ -45,6 +78,7 @@ function Advisor.apply_squad(game)
         for name,id in pairs({tact=set.critic,almo=set.cheer}) do
             local slot=game.logistics[name]
             if slot then
+                slot.unit.team_id=(name=="tact" and teams.critic) or teams.cheer or eid
                 slot.unit.character_id=id
                 slot.text=""
                 slot.life=0
@@ -54,10 +88,6 @@ function Advisor.apply_squad(game)
     end
 end
 
-local function squad_set(game)
-    return game.advisor_set or SQUAD_ADVISORS[game.chosen_squad] or SQUAD_ADVISORS[1]
-end
-
 local function step_speaker(a)
     local s=steps[a.step]
     return s and s.id or 25
@@ -65,7 +95,8 @@ end
 
 function Advisor.start(game)
     -- 可可不再开场自我介绍：空闲槽位保持空文本，只有事件触发时才显示。
-    game.advisor={unit={unit_type="instructor",callsign="COMMAND"},age=0,life=0,text="",kind="idle",clock=0,step=1,flags={},losses=0,kills=0,queue={}}
+    game.advisor={unit={unit_type="instructor",callsign="COMMAND",team=game.player_team},age=0,life=0,text="",kind="idle",clock=0,step=1,flags={},losses=0,kills=0,queue={}}
+    game.advisor.unit.game=game
     if game.level_data.meta and game.level_data.meta.tutorial then
         game.advisor.tutorial=true
         Advisor.say(game,steps[1].text,"idle")
@@ -146,7 +177,8 @@ function Advisor.update(game,dt)
         -- 护送/生存过半：侧翼频道代表塔克特队鼓励一次。
         a.progress_cheer=true
         if logistics.almo then
-            Slots.say(logistics.almo,progress_text[logistics.almo.unit.character_id] or progress_text[26],"praise")
+            Slots.say(logistics.almo,(advisor_lines(game,game.enemy_team_id).right and advisor_lines(game,game.enemy_team_id).right.progress)
+            or progress_text[logistics.almo.unit.character_id] or progress_text.default,"praise")
         end
         return
     end
@@ -155,7 +187,8 @@ function Advisor.update(game,dt)
         Advisor.say(game,Pilots.line(a.unit,"lost",""),"lost")
         -- 正式的队形批评走侧翼频道，诺阿/阿尔茉不再复读同一事件。
         if logistics.tact then
-            Slots.say(logistics.tact,loss_text[logistics.tact.unit.character_id] or loss_text[21],"failed")
+            Slots.say(logistics.tact,(advisor_lines(game,game.enemy_team_id).left and advisor_lines(game,game.enemy_team_id).left.loss)
+            or loss_text[logistics.tact.unit.character_id] or loss_text.default,"failed")
         end
         local enemy=logistics.enemy
         if enemy and (enemy.cool_until or 0)<game.level_time then
@@ -168,7 +201,9 @@ function Advisor.update(game,dt)
         if u.hp/u.max_hp<0.3 and (not u.advisor_warn or game.level_time-u.advisor_warn>25) then
             u.advisor_warn=game.level_time
             require("systems.audio").play("warning")
-            Advisor.say(game,string.format(warn_text[a.unit.character_id] or warn_text[25],u.name),"hit")
+            Advisor.say(game,string.format(
+                (advisor_lines(game,game.player_team_id).left and advisor_lines(game,game.player_team_id).left.warn)
+                or warn_text[a.unit.character_id] or warn_text.default,u.name),"hit")
             return
         end
     end
@@ -180,7 +215,8 @@ function Advisor.update(game,dt)
         -- 击杀欢呼走侧翼频道；索尔贝按战损阈值做出反应。
         if logistics.almo and (logistics.almo.cool_until or 0)<game.level_time then
             logistics.almo.cool_until=game.level_time+30
-            Slots.say(logistics.almo,cheer_text[logistics.almo.unit.character_id] or cheer_text[26],"praise")
+            Slots.say(logistics.almo,(advisor_lines(game,game.enemy_team_id).right and advisor_lines(game,game.enemy_team_id).right.cheer)
+            or cheer_text[logistics.almo.unit.character_id] or cheer_text.default,"praise")
         end
         local enemy=logistics.enemy
         if enemy then

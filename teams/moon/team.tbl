@@ -1,0 +1,8 @@
+[team]
+id=moon
+name=月天使队
+commander=020
+left=021
+right=026
+chara={010,011,012,013,014,015}
+bgm=bgm/battle.ogg

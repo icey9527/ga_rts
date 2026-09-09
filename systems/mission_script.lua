@@ -4,7 +4,7 @@ function Mission.start(game,filename)
     local id=assert(filename:match("level_(%d+)"),"Invalid mission filename")
     local path="levels/scripts/level_"..id..".lua"
     local script=love.filesystem.getInfo(path) and require("levels.scripts.level_"..id) or {}
-    game.mission={script=script,shown={},queue={},actors={},age=0}
+    game.mission={script=script,shown={},queue={},actors={},age=0,display_text={}}
     for _,line in ipairs(script.intro or {}) do Mission.say(game,line) end
 end
 function Mission.say(game,line)
@@ -49,16 +49,40 @@ end
 function Mission.current(game)
     local m=game.mission
     if not m or not m.current then return nil end
+    m.display_text=m.display_text or {}
     local line=m.current
-    local id=line.id or 25
+    -- 剧情里 id=25/22 代表战术/后勤频道，由所选队伍的左右手出演。
+    local set=game.advisor_set or {}
+    local channel=(line.id==25 and "tactical") or (line.id==22 and "logistics") or nil
+    local id=(channel and set[channel]) or line.id or 25
+    local text=m.display_text[line]
+    if not text then
+        text=line.text or ""
+        if line==m.script.intro[1] and channel then
+            -- 开场第一句使用 teams/<我方>/advisor/dialogue.lua 的关卡开场词。
+            local pid=game.player_team_id or "rune"
+            local path="teams/"..pid.."/advisor/dialogue.lua"
+            local ok,data=pcall(function()
+                local src=love.filesystem.getInfo(path) and love.filesystem.read(path)
+                local chunk=src and loadstring(src)
+                return chunk and chunk()
+            end)
+            if ok and type(data)=="table" and data.intro then
+                local key=game.level_name and game.level_name:match("(%d+)") or "default"
+                text=data.intro[key] or data.intro.default or text
+            end
+        end
+        m.display_text[line]=text
+    end
     local unit
-    for _,u in ipairs(game.units) do if u.character_id==id then unit=u; break end end
+    for _,u in ipairs(game.units) do if u.character_id==id and u.team~=1 then unit=u; break end end
     if not unit then
         -- 通讯演员需要 game 引用与阵营：头像红边和台词侧别都按此判定。
-        m.actors[id]=m.actors[id] or {character_id=id,unit_type=(id==22 or id==74) and "researcher" or "instructor",team=id==74 and 1 or game.player_team,game=game}
+        local team_for=(channel and game.advisor_teams and game.advisor_teams[channel]) or game.player_team_id or "rune"
+        m.actors[id]=m.actors[id] or {character_id=id,team_id=team_for,unit_type=(id==22 or id==74) and "researcher" or "instructor",team=id==74 and 1 or game.player_team,game=game}
         unit=m.actors[id]
     end
-    return line,unit,m.age
+    return line,unit,m.age,text
 end
 function Mission.finish(game,result)
     local m=game.mission
@@ -70,7 +94,7 @@ end
 function Mission.contains(game,x,y)
     local line=Mission.current(game)
     if not line then return false end
-    if line.id==22 or line.id==25 or line.slot=="noah" or line.slot=="coco" then return x>=270 and y>=love.graphics.getHeight()-210 end
+    if line.id==22 or line.id==25 or line.id==21 or line.id==26 or line.slot=="noah" or line.slot=="coco" or line.slot=="advisor" then return x>=270 and y>=love.graphics.getHeight()-210 end
     local w=love.graphics.getWidth()
     local left=w-408
     if game.economy and game.economy.open then left=w-math.min(390,w-550)-282 end
@@ -81,15 +105,16 @@ function Mission.busy(game)
     return m and (m.current~=nil or #m.queue>0)
 end
 function Mission.draw(game)
-    local line,unit,age=Mission.current(game)
+    local line,unit,age,text=Mission.current(game)
     if not line then return end
     local g=love.graphics
     local w,h=g.getDimensions()
-    local slot=line.slot or (line.id==22 and "noah" or (line.id==25 and "coco" or "radio"))
+    local slot=line.slot or ((line.id==22) and "noah" or ((line.id==25 or line.id==21 or line.id==26) and "advisor" or "radio"))
+    if slot~="noah" and slot~="advisor" and slot~="coco" and slot~="radio" then slot="radio" end
     local width=math.min(390,w-290)
     local x,y=w-width-18,66
     if slot=="radio" and game.economy and game.economy.open then width=math.min(width,w-550); x=w-width-282 end
-    if slot=="coco" or slot=="noah" then
+    if slot=="coco" or slot=="advisor" or slot=="noah" then
         width=math.min(390,w-440)
         x=slot=="noah" and w-width-150 or 395
         y=h-170
@@ -101,6 +126,6 @@ function Mission.draw(game)
             g.draw(img,px,h-30,math.sin(age*1.2)*0.01,s,s,img:getWidth()/2,img:getHeight());g.pop()
         end
     end
-    require("ui.comms").bubble(unit,line.text,line.kind or "idle",x,y,width,age,10,56)
+    require("ui.comms").bubble(unit,text or line.text,line.kind or "idle",x,y,width,age,10,56)
 end
 return Mission

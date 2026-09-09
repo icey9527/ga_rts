@@ -1,0 +1,8 @@
+[chara]
+id=004
+name=莉莉
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

@@ -1,0 +1,8 @@
+[chara]
+id=002
+name=卡露娅
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

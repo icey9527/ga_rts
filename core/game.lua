@@ -8,6 +8,8 @@ function Game.new()
         effects = {},
         selected_units = {},
         player_team = 0,
+        player_team_id = "rune",
+        enemy_team_id = "moon",
         ai_controllers = {},
         level_time = 0,
         paused = false,
@@ -45,6 +47,7 @@ function Game:add_unit(unit)
     unit.pilot_id = (unit.id-1)%7+1
     unit.callsign = string.format("%s-%02d",unit.team == self.player_team and "A" or "B",unit.id)
     unit.game = self
+    unit.team_id = unit.team_id or (unit.team==self.player_team and self.player_team_id or self.enemy_team_id)
     require("ui.pilots").assign(unit)
     unit.name=require("ui.pilots").profile(unit).name
     require("systems.preferences").apply(unit)

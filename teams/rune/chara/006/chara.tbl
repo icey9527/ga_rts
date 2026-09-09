@@ -1,0 +1,8 @@
+[chara]
+id=006
+name=枣
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

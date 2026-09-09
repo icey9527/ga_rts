@@ -1,0 +1,8 @@
+[chara]
+id=014
+name=香草
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

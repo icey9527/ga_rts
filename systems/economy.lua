@@ -6,10 +6,11 @@ function Economy.start(game)
     game.economy={credits=config.starting_credits,queue={},armor=0,weapons=0,open=require("systems.preferences").get("dock_open",false)}
     game.logistics=game.logistics or {}
     game.researcher={unit={unit_type="researcher",character_id=22,callsign="R&D",team=game.player_team},age=0,life=0,text="",kind="idle",team=game.player_team,role="noah",queue={}}
+    game.researcher.unit.game=game
     game.logistics.player=game.researcher
     game.logistics.enemy={unit={unit_type="researcher",character_id=74,callsign="ENEMY R&D",team=1},age=0,life=0,text="",kind="idle",team=1,role="enemy",queue={}}
-    game.logistics.tact={unit={unit_type="advisor",character_id=21,callsign="TACT SQUAD",team=game.player_team},age=0,life=0,text="",kind="idle",team=game.player_team,role="lester",queue={}}
-    game.logistics.almo={unit={unit_type="advisor",character_id=26,callsign="TACT SQUAD",team=game.player_team},age=0,life=0,text="",kind="idle",team=game.player_team,role="almo",queue={}}
+    game.logistics.tact={unit={unit_type="advisor",character_id=21,callsign="TACT SQUAD",team=game.player_team,team_id=game.team_id},age=0,life=0,text="",kind="idle",team=game.player_team,role="lester",queue={}}
+    game.logistics.almo={unit={unit_type="advisor",character_id=26,callsign="TACT SQUAD",team=game.player_team,team_id=game.team_id},age=0,life=0,text="",kind="idle",team=game.player_team,role="almo",queue={}}
     -- 槽位挂上 game 引用：头像边框与台词阵营都依赖 unit.game 判定。
     for _,slot in pairs(game.logistics) do slot.unit.game=game end
     require("systems.minerals").start(game)
@@ -130,18 +131,16 @@ function Economy.update(game,dt)
         if node then x,y=node.x,node.y end
         if game:is_position_blocked(x,y,30,0) then job.remaining=1; return end
         local u=require("entities.unit").new(x,y,game.player_team,cfg)
-        -- 地图内同一角色只出现一次：优先从未上场的候选里选驾驶员。
-        local pool={26,27,28,29,30,32,33,34,35,36,37,38,39,42,43,45,46,50,51,52,53,54,55,56,57,75,76,87}
-        local available=require("ui.pilots").available()
+        -- 地图内同一角色只出现一次：优先从本单位阵营队伍与混池中选未上场驾驶员。
+        local Pilots=require("ui.pilots")
+        local pool=Pilots.team_pool({game.player_team_id or "rune","default"})
         local used={}
         for _,other in ipairs(game.units) do
             if other.alive and other~=u and other.character_id then used[other.character_id]=true end
         end
         local candidates,fallback={},{}
         for _,id in ipairs(pool) do
-            if available[id] then
-                if not used[id] then candidates[#candidates+1]=id else fallback[#fallback+1]=id end
-            end
+            if not used[id] then candidates[#candidates+1]=id else fallback[#fallback+1]=id end
         end
         if #candidates>0 then u.character_id=candidates[math.random(#candidates)]
         elseif #fallback>0 then u.character_id=fallback[math.random(#fallback)] end

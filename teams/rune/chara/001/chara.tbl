@@ -1,0 +1,8 @@
+[chara]
+id=001
+name=阿普莉可特
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

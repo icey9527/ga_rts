@@ -1,0 +1,8 @@
+[team]
+id=rune
+name=符文天使队
+commander=000
+left=025
+right=022
+chara={001,002,003,004,005,006,007}
+bgm=bgm/battle.ogg

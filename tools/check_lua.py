@@ -27,7 +27,28 @@ for path in files:
 if not errors:
     portraits = sorted(p.name for p in (root / "assets/portraits").iterdir())
     listing = ",".join('"' + p + '"' for p in portraits)
-    bootstrap = 'package.path="' + root.as_posix() + '/?.lua;"..package.path\nPORTRAITS={' + listing + '}\n'
+    team_dirs = {"": []}
+    teams_root = root / "teams"
+    if teams_root.exists():
+        for team in sorted(d.name for d in teams_root.iterdir() if d.is_dir()):
+            team_dirs[""].append(team)
+            chara_root = teams_root / team / "chara"
+            if not chara_root.exists():
+                continue
+            ids = sorted(d.name for d in chara_root.iterdir() if d.is_dir())
+            team_dirs[team + "/chara"] = ids
+            for cid in ids:
+                face = chara_root / cid / "face"
+                if face.exists():
+                    team_dirs[f"{team}/chara/{cid}/face"] = sorted(f.name for f in face.iterdir())
+
+    def lua_array(items):
+        return "{" + ",".join('"' + i + '"' for i in items) + "}"
+
+    teams_listing = ",".join('["' + k + '"]=' + lua_array(v) for k, v in team_dirs.items())
+    bootstrap = ('package.path="' + root.as_posix() + '/?.lua;"..package.path\n'
+                 'PORTRAITS={' + listing + '}\n'
+                 'TEAM_DIRS={' + teams_listing + '}\n')
     if lua.luaL_loadstring(state, bootstrap.encode()) or lua.lua_pcall(state, 0, 0, 0):
         errors.append(lua.lua_tolstring(state, -1, None).decode("utf-8", "replace"))
     elif lua.luaL_loadfile(state, str(root / "tools/headless.lua").encode()) or lua.lua_pcall(state, 0, 0, 0):

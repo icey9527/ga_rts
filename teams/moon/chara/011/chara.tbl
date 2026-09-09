@@ -1,0 +1,8 @@
+[chara]
+id=011
+name=兰花
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

@@ -5,4 +5,6 @@ return {
     battle="battle",
     victory="victory",
     defeat="defeat",
+    battle_alt="battle",
+    battle_tact="battle",
 }

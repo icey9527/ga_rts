@@ -180,6 +180,9 @@ local function start_level(index)
     end
 
     current_level_name = game.level_name or level_files[index]
+    game.player_team_id=game.player_team_id or "rune"
+    game.enemy_team_id=game.enemy_team_id or "moon"
+    game.team_id=game.player_team_id
     Mission.start(game,level_files[index])
     Advisor.start(game)
     local ms=game:get_mothership(game.player_team)
@@ -200,7 +203,7 @@ local function start_level(index)
 end
 
 local function begin_briefing()
-    Simulation.deploy(game,Deployment.choice,Deployment.formation)
+    Simulation.deploy(game,Deployment.player_id(),Deployment.enemy_id(),Deployment.formation)
     game.briefing={time=0}
     game_state="briefing"
     game:pause()
@@ -327,7 +330,7 @@ function love.load(args)
             -- 可可/诺阿转入侧翼频道，敌方索尔贝红色垫底。
             local Slots=require("systems.comms_slots")
             local L=game.logistics
-            game.chosen_squad=2
+            game.player_team_id="moon"; game.enemy_team_id="rune"
             require("systems.advisor").apply_squad(game)
             Slots.replace(L.tact,"卡兹亚君，队形散了才会被抓住破绽。复盘时逐条分析。","failed",9)
             Slots.replace(L.almo,"目标击破。战斗数据已记录，保持这个节奏。","praise",9)
@@ -354,7 +357,11 @@ function love.load(args)
             game:pause()
             _G.VERIFY_NAME="verification-exercise.png"
         end
-        if arg=="--deployment-shot" then game_state="deployment"; _G.VERIFY_NAME="verification-deployment.png" end
+        if arg=="--deployment-shot" then
+            game_state="deployment"
+            _G.VERIFY_CAPTURE=50  -- 等入场动画播完再拍
+            _G.VERIFY_NAME="verification-deployment.png"
+        end
         if arg=="--shield-shot" then
             local u=game:get_units_by_team(game.player_team)[2]
             u.skill_data={type="shield",duration=8,shield_amount=900}
@@ -363,6 +370,21 @@ function love.load(args)
         end
         if arg=="--menu-shot" then game_state="menu"; _G.VERIFY_NAME="verification-menu.png" end
         if arg=="--audio-diag" then _G.AUDIO_DIAG={frame=0} end
+        if arg=="--pilots-diag" then
+            local P=require("ui.pilots")
+            local rival={character_id=11,team=1,team_id="moon"}
+            local ok,err=pcall(function()
+                local base=love.filesystem.getSource().."/"
+                local f=assert(io.open(base.."pilots-diag.txt","w"))
+                f:write("info="..tostring(P.info("moon","11")).."\n")
+                f:write("line="..tostring(P.line(rival,"attack","FB")).."\n")
+                f:write("padded info="..tostring(P.info("moon",11)).."\n")
+                f:write("padded line="..tostring(P.line({character_id=11,team=1,team_id="moon"},"attack","FB")).."\n")
+                f:close()
+            end)
+            if not ok then error(err) end
+            love.event.quit()
+        end
         if arg=="--pacing" then require("tools.verify").pacing() end
         if arg=="--mission-pacing" then require("tools.verify_missions").pacing() end
         if arg=="--economy-shot" then
@@ -436,13 +458,13 @@ function love.update(dt)
     end
     -- 背景音乐按状态切换：菜单/简报用标题曲，战斗用战斗曲，结算用胜负曲。
     if game_state=="menu" or game_state=="deployment" or game_state=="briefing" then
-        require("systems.bgm").play("menu")
+        require("systems.bgm").play_pack(game,"menu")
     elseif game_state=="playing" then
-        require("systems.bgm").play("battle")
+        require("systems.bgm").play_pack(game,"battle")
     elseif game_state=="victory" then
-        require("systems.bgm").play("victory",false)
+        require("systems.bgm").play_pack(game,"victory",false)
     elseif game_state=="defeat" then
-        require("systems.bgm").play("defeat",false)
+        require("systems.bgm").play_pack(game,"defeat",false)
     end
     if game_state=="deployment" then return end
     if game_state=="briefing" then
@@ -636,7 +658,7 @@ local function draw_playing()
     SkillVisuals.draw(game)
 
     draw_selection_rect()
-    if not game.cinematic and not game.skill_focus then draw_command_indicators() end
+    draw_command_indicators()
     unit_panel:draw(game)
     HUD.draw(game, current_level_name, command_mode)
     if game.menu_confirm and game:is_paused() then
@@ -953,6 +975,11 @@ function love.wheelmoved(dx, dy)
         if menu then menu:wheelmoved(dx, dy) end
         return
     end
+    if game_state == "deployment" then
+        local mx,my=love.mouse.getPosition()
+        Deployment.wheelmoved(dy,mx,my)
+        return
+    end
 
     if game_state ~= "playing" then return end
 
@@ -967,7 +994,9 @@ end
 
 function love.keypressed(key)
     if game_state=="deployment" then
-        if key=="return" then begin_briefing() elseif key=="escape" then game_state="menu" end
+        if key=="return" then begin_briefing()
+        elseif key=="escape" then game_state="menu"
+        else Deployment.keypressed(key) end
         return
     end
     if game_state=="briefing" then

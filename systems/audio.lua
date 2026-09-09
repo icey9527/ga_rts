@@ -6,7 +6,7 @@ function A.play(event)
     local now=love.timer.getTime()
     if now-(A.last[event] or -10)<cfg.cooldown then return end
     A.last[event]=now
-    local volume=math.max(0,math.min(1,tonumber(require("systems.preferences").get("volume",0.65)) or 0.65))
+    local volume=math.max(0,math.min(1,tonumber(require("systems.preferences").get("volume",0.9)) or 0.9))
     if volume==0 then return end
     if A.sources[event]==nil then
         local ok,source=pcall(love.audio.newSource,"assets/se/"..cfg.file..".ogg","static")

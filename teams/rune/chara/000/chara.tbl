@@ -1,0 +1,8 @@
+[chara]
+id=000
+name=卡兹亚
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

@@ -1,0 +1,8 @@
+[chara]
+id=020
+name=塔克特
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

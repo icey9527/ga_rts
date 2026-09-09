@@ -1,0 +1,8 @@
+[chara]
+id=015
+name=千岁
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

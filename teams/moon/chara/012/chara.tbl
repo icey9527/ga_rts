@@ -1,0 +1,8 @@
+[chara]
+id=012
+name=薄荷
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+

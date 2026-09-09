@@ -176,9 +176,11 @@ function Verify.run()
             assert(lines.friendly and lines.enemy and #lines.enemy.attack>0,"pilot dialogue pools load")
         end
     end
-    assert(Pilots.profile({unit_type="instructor"}).name=="可可")
-    assert(Pilots.profile({unit_type="researcher"}).name=="诺阿")
-    local nano={unit_type="repair",character_id=3}
+    assert(Pilots.profile({character_id=25,team_id="rune"}).name=="可可","rune left is Coco")
+    assert(Pilots.profile({character_id=22,team_id="rune"}).name=="诺阿","rune right is Noah")
+    assert(Pilots.profile({character_id=21,team_id="moon"}).name=="雷斯特","moon left is Lester")
+    assert(Pilots.profile({character_id=26,team_id="moon"}).name=="阿尔茉","moon right is Almo")
+    local nano={unit_type="repair",character_id=3,team_id="rune"}
     assert(not Pilots.line(nano,"command",""):find("我",1,true),"Nano speech constraint")
     local skill_game=Game.new()
     local caster=Unit.new(0,0,0,{stats={type="fighter"},skill={type="shield",shield_amount=200,duration=4}})
@@ -225,7 +227,7 @@ function Verify.run()
     for choice=1,2 do
         local exercise=Game.new()
         assert(levels.load_level("level_01.tbl",exercise))
-        require("systems.simulation").deploy(exercise,choice,"spread")
+        require("systems.simulation").deploy(exercise,choice==1 and "rune" or "moon",choice==1 and "moon" or "rune","spread")
         local seen={}
         for _,actor in ipairs(exercise.units) do
             assert(not seen[actor.character_id],"simulation has unique pilots")
