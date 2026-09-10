@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/stand_11_00_normal.png"
+face_attack="face/stand_11_08_normal.png"
+face_idle="face/stand_11_03_normal.png"
+face_hit="face/stand_11_04_normal.png"
+id=011
+name=大神樱
+face=face
+hit=face
+chara=chara.png
+type=5
+dialogue=dialogue.lua

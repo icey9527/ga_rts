@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/stand_12_06_normal.png"
+face_attack="face/stand_12_09_normal.png"
+face_idle="face/stand_12_03_normal.png"
+face_hit="face/stand_12_11_normal.png"
+id=012
+name=塞蕾丝缇雅
+face=face
+hit=face
+chara=chara.png
+type=11
+dialogue=dialogue.lua

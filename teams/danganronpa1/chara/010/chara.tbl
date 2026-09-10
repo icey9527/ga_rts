@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/stand_10_00_normal.png"
+face_attack="face/stand_10_26_normal.png"
+face_idle="face/stand_10_09_normal.png"
+face_hit="face/stand_10_08_normal.png"
+id=010
+name=腐川冬子
+face=face
+hit=face
+chara=chara.png
+type=10
+dialogue=dialogue.lua

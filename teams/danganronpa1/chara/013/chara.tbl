@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/stand_16_00_normal.png"
+face_attack="face/stand_16_02_normal.png"
+face_idle="face/stand_16_01_normal.png"
+face_hit="face/stand_16_05_normal.png"
+id=013
+name=江之岛盾子
+face=face
+hit=face
+chara=chara.png
+type=4
+dialogue=dialogue.lua

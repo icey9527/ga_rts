@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/stand_15_00_normal.png"
+face_attack="face/stand_15_17_normal.png"
+face_idle="face/stand_15_03_normal.png"
+face_hit="face/stand_15_06_normal.png"
+id=015
+name=黑白熊
+face=face
+hit=face
+chara=chara.png
+type=-2
+dialogue=dialogue.lua

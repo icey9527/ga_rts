@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/stand_14_00_normal.png"
+face_attack="face/stand_14_14_normal.png"
+face_idle="face/stand_14_03_normal.png"
+face_hit="face/stand_14_05_normal.png"
+id=014
+name=不二咲千寻
+face=face
+hit=face
+chara=chara.png
+type=6
+dialogue=dialogue.lua

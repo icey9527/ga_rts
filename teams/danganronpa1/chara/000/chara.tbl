@@ -1,10 +1,10 @@
 [chara]
-face_normal="face/f_sou_0101ak.png"
-face_attack="face/f_sou_0101sb.png"
-face_idle="face/f_sou_0101eg.png"
-face_hit="face/f_sou_0101aw.png"
+face_normal="face/stand_00_00_normal.png"
+face_attack="face/stand_00_13_normal.png"
+face_idle="face/stand_00_19_normal.png"
+face_hit="face/stand_00_08_normal.png"
 id=000
-name=苍
+name=苗木诚
 face=face
 hit=face
 chara=chara.png
