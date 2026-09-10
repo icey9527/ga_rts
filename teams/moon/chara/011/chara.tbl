@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac011_0000.agi.png"
+face_attack="face/fac011_0006_m2.agi.png"
+face_idle="face/fac011_0002_m0.agi.png"
+face_hit="face/fac011_0011_m2.agi.png"
 id=011
 name=兰花
 face=face

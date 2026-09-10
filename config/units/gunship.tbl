@@ -16,6 +16,8 @@ type = "ranged"
 range = 340
 damage = 12
 count = 7
+arc = 120
+direction = "front"
 
 [weapon.secondary]
 type = "missile"
@@ -23,6 +25,8 @@ range = 560
 damage = 28
 cooldown = 2.2
 count = 2
+arc = 220
+direction = "front"
 burst_count = 2
 burst_delay = 0.08
 spread_angle = 0.34

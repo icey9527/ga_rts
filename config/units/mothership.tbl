@@ -9,6 +9,8 @@ attack_damage = 95
 attack_range = 620
 attack_cooldown = 2.6
 attack_type = "beam"
+attack_arc = 90
+attack_direction = "front"
 radius = 58
 sprite_color = {100, 200, 255}
 

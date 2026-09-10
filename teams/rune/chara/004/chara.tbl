@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac004_0001.agi.png"
+face_attack="face/fac004_2006_m0.agi.png"
+face_idle="face/fac004_0002_m2.agi.png"
+face_hit="face/fac004_0012.agi.png"
 id=004
 name=莉莉
 face=face

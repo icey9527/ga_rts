@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac012_0000.agi.png"
+face_attack="face/fac012_0004_m0.agi.png"
+face_idle="face/fac012_0002.agi.png"
+face_hit="face/fac012_0012.agi.png"
 id=012
 name=薄荷
 face=face

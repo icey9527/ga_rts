@@ -5,7 +5,8 @@ function Shared.update(u,dt,game,mode)
         local dx,dy=u.x-target.x,u.y-target.y
         local d=math.sqrt(dx*dx+dy*dy)
         if d<u.attack_range*0.55 and d>1 then
-            u:_move_towards(u.x+dx/d*80,u.y+dy/d*80,u.speed*dt,game)
+            -- Submit an intent; only the unit state dispatcher integrates movement.
+            u.combat_move_intent={x=u.x+dx/d*80,y=u.y+dy/d*80}
         end
     end
 end

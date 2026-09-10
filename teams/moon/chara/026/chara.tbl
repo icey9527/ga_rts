@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac026_2001.agi.png"
+face_attack="face/fac026_2005.agi.png"
+face_idle="face/fac026_2002_m0.agi.png"
+face_hit="face/fac026_2012.agi.png"
 type=-2
 id=026
 name=阿尔茉

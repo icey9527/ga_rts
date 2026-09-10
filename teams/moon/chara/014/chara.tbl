@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac014_2000.agi.png"
+face_attack="face/fac014_2006_m2.agi.png"
+face_idle="face/fac014_2001_m2.agi.png"
+face_hit="face/fac014_2012.agi.png"
 id=014
 name=香草
 face=face

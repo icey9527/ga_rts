@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac000_2000.agi.png"
+face_attack="face/fac000_0006_m0.agi.png"
+face_idle="face/fac000_2002_m0.agi.png"
+face_hit="face/fac000_2011.agi.png"
 id=000
 name=卡兹亚
 face=face

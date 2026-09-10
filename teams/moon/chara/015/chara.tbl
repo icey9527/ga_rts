@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac015_1000.agi.png"
+face_attack="face/fac015_1006_m1.agi.png"
+face_idle="face/fac015_1002.agi.png"
+face_hit="face/fac015_1011.agi.png"
 id=015
 name=千岁
 face=face

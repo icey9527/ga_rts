@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac001_0001.agi.png"
+face_attack="face/fac001_2006_m0.agi.png"
+face_idle="face/fac001_0002_m0.agi.png"
+face_hit="face/fac001_0012.agi.png"
 id=001
 name=阿普莉可特
 face=face

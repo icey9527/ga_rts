@@ -93,7 +93,7 @@ return {
 
 ## 角色对白怎么扩写
 
-在 `dialogue/characters/004.lua` 的 `friendly` 下添加我方事件，在 `enemy` 下添加少量演习对手台词。不要在这里添加固定开场或胜败剧情。
+在 `teams/<队伍>/chara/004/dialogue.lua` 的 `friendly` 下添加我方事件，在 `enemy` 下添加少量演习对手台词。不要在这里添加固定开场或胜败剧情。
 
 ```lua
 return {
@@ -115,7 +115,7 @@ return {
 
 敌方不会播报接令、我方指令失败和技能就绪。其红色边框由阵营自动决定。每类事件的台词数组会轮换，扩写时直接添加句子即可。
 
-双人日常对话放在 `dialogue/exchanges.lua`，用 `from`, `to`, `question`, `answer`。跟随关系会提高该组合的权重，双方必须在场且存活。第二人回答前失能，会取消回答。
+双人互动如果启用，应放在对应队伍的角色对白文件中；镜头跟随使用 `camera_follow_*`，机体跟随命令使用 `formation_follow_*`。不要再创建或引用旧的 `dialogue/exchanges.lua`。
 
 ## 人物规则
 

@@ -62,7 +62,7 @@ function Skill.execute(unit, game)
     elseif stype=="orbital_bombardment" then
         local t=unit.skill_target or unit.attack_target
         local x,y=t.x,t.y
-        for _,enemy in ipairs(game:get_enemy_units(unit.team)) do if (enemy.x-x)^2+(enemy.y-y)^2<=(sd.radius or 300)^2 then enemy:take_damage(sd.damage or 350) end end
+        for _,enemy in ipairs(game:get_enemy_units(unit.team)) do if (enemy.x-x)^2+(enemy.y-y)^2<=(sd.radius or 300)^2 then enemy:take_damage(sd.damage or 350,unit) end end
         game:add_effect(Effect.explosion(x,y-(t.z or 0)*0.22,sd.radius or 300))
         unit.skill_target=nil
         return
@@ -74,7 +74,7 @@ function Skill.execute(unit, game)
         for _, u in ipairs(game.units) do
             if u.team ~= unit.team and u.alive and u.state ~= "dead" then
                 if unit:distance_to(u) <= radius then
-                    u:take_damage(dmg)
+                    u:take_damage(dmg,unit)
                 end
             end
         end
@@ -176,7 +176,7 @@ function Skill.execute(unit, game)
         for i = 1, count do
             if #enemies == 0 then break end
             local target = enemies[((i - 1) % #enemies) + 1]
-            game:add_projectile(Projectile.missile(unit.x, unit.y, target, dmg, sd.projectile_speed or 260, unit.z or 0))
+            game:add_projectile(Projectile.missile(unit.x, unit.y, target, dmg, sd.projectile_speed or 260, unit.z or 0, "missile", unit))
         end
         game:add_effect(Effect.skill_flash(unit.x, unit.y, math.min(range, 420), {1, 0.55, 0.1}))
 

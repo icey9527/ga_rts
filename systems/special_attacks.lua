@@ -27,7 +27,7 @@ function S.execute(u,game)
         local d=math.max(1,math.sqrt(dx*dx+dy*dy));local range=sd.range or 1600
         local bx,by=u.x+dx/d*range,u.y+dy/d*range
         for _,enemy in ipairs(game:get_enemy_units(u.team)) do
-            if segment_distance(enemy.x,enemy.y,u.x,u.y,bx,by)<=(sd.width or 35)+enemy.radius then enemy:take_damage(sd.damage or 650) end
+            if segment_distance(enemy.x,enemy.y,u.x,u.y,bx,by)<=(sd.width or 35)+enemy.radius then enemy:take_damage(sd.damage or 650,u) end
         end
         game:add_effect(Effect.charged_beam(x,y,bx,by-aim.z*0.22))
     elseif sd.type=="sweep_bombardment" then
@@ -57,7 +57,7 @@ function S.update_dash(u,dt,game)
     end
     for _,enemy in ipairs(game:get_enemy_units(u.team)) do
         if not dash.hits[enemy] and segment_distance(enemy.x,enemy.y,ox,oy,u.x,u.y)<u.radius+enemy.radius+18 then
-            dash.hits[enemy]=true;enemy:take_damage(dash.damage)
+            dash.hits[enemy]=true;enemy:take_damage(dash.damage,u)
             game:add_effect(require("entities.effect").explosion(enemy.x,enemy.y-(enemy.z or 0)*0.22,55))
         end
     end
@@ -72,7 +72,7 @@ function S.update(game,dt)
             local n=job.index;job.index=n+1
             local x=job.x+(n%4-1.5)*job.radius*0.6
             local y=job.y+(math.floor(n/4)-1)*job.radius*0.6
-            local p=require("entities.projectile").artillery(job.unit.x,job.unit.y,x,y,job.damage,110,900,job.unit.z,job.unit.team)
+            local p=require("entities.projectile").artillery(job.unit.x,job.unit.y,x,y,job.damage,110,900,job.unit.z,job.unit.team,"artillery",job.unit)
             p.life=math.max(3,math.sqrt((x-job.unit.x)^2+(y-job.unit.y)^2)/900+1)
             game:add_projectile(p)
         end

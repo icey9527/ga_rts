@@ -69,7 +69,7 @@ Current asset names in `assets/characters` use readable pilot names. `config/cha
 
 Skill releases now slow the battlefield briefly and use signatures by role: sniper/artillery charge beams, bomber/artillery radial barrages, and interceptor/light dash strikes. Preferences are stored under LÖVE's writable `saves/preferences.tbl`, keyed by pilot ID, including automatic skill release.
 
-- Each ship role has a `units/<role>/logic.lua` and dialogue module. Numbered pilot dialogue lives in `dialogue/characters`, with separate friendly and enemy event pools. Shared behaviors remain reusable.
+- Each ship role has a `units/<role>/logic.lua` and dialogue module. Numbered pilot dialogue lives in `teams/<team>/chara/<ID>/dialogue.lua`, with separate friendly and enemy event pools. Shared behaviors remain reusable.
 - Simulation deployment offers either squad, three formations, and skippable prebattle conversations. Light, sniper, artillery, and tiger roles add weapon and mobility choices.
 - Map size and hull durability increased; damage reduced. Repair ships offer fleet repair or targeted repair from a submenu. Shield and bombardment releases add world effects, camera focus, and a brief screen flash.
 - Map portraits use circular clipping, one gold border, and one direction pointer. Radio portraits use rounded clipping and flip transitions. Enemy reports have a red indicator and omit command acknowledgements.

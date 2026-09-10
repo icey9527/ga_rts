@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac020_1001_m2.agi.png"
+face_attack="face/fac020_1006_m0.agi.png"
+face_idle="face/fac020_1002_m0.agi.png"
+face_hit="face/fac020_1010_e0.agi.png"
 id=020
 name=塔克特
 face=face

@@ -58,3 +58,4 @@ for choice=1,2 do
 end
 print("PASS: mission lifecycle, skill targeting, beam impact, supply undocking, preferences, pilot assets, squads")
 assert(require("tools.verify_missions").run())
+assert(require("tools.verify_combat").run())

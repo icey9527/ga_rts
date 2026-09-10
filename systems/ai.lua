@@ -139,6 +139,7 @@ function AI:_nearest_enemy_anywhere(unit, enemies)
 end
 
 function AI:_command_unit(unit, my, enemy, game)
+    if unit.unit_type=="collector" or unit.objective_ship then return end
     if unit.state=="undocking" then return end
     if unit.state == "disabled" or unit.state == "dead" then return end
     if (unit.state=="returning" or unit.state=="supplying") and game:get_mothership(self.team) then return end

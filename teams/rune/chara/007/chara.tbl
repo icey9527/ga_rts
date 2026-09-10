@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac007_0005.agi.png"
+face_attack="face/fac007_3006_m0.agi.png"
+face_idle="face/fac007_2001.agi.png"
+face_hit="face/fac007_2011.agi.png"
 id=007
 name=罗塞尔
 face=face

@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac010_0001.agi.png"
+face_attack="face/fac010_0006_m2.agi.png"
+face_idle="face/fac010_0002_m0.agi.png"
+face_hit="face/fac010_0011_m2.agi.png"
 id=010
 name=梅尔优
 face=face

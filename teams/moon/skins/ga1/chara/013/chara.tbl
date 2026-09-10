@@ -1,5 +1,5 @@
 [chara]
-face_normal=fac013_0000.agi.png
-face_attack=fac013_0001.agi.png
-face_idle=fac013_0002.agi.png
-face_hit=fac013_0008.agi.png
+face_normal="face/fac013_0000.agi.png"
+face_attack="face/fac013_x20.agi.png"
+face_idle="face/fac013_0001.agi.png"
+face_hit="face/fac013_x19.agi.png"

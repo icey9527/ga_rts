@@ -1,4 +1,6 @@
 -- Deep Space Command - Love2D entry point.
+-- 维护说明：main.lua 的大规模拆分暂缓，先保持入口稳定；复杂功能迁移按完整职责模块进行，
+-- 不为单个函数重复建文件。当前 entities/ 仍是运行时核心实体层，不能删除或视为历史残留。
 
 local Camera = require("core.camera")
 local Game = require("core.game")
@@ -29,6 +31,10 @@ local Input=require("core.input")
 local SelectionBox=require("ui.selection_box")
 local BattleView=require("ui.battle_view")
 local Score=require("systems.score")
+local Selection=require("ui.selection_controller")
+local BattleFlow=require("systems.battle_flow")
+local InteractionState=require("core.interaction_state")
+local MenuActions=require("ui.menu_actions")
 
 local game
 local camera
@@ -64,20 +70,17 @@ local command_mode = "normal"
 local command_action
 local command_hover_target
 local command_controller=CommandController.new()
+local interaction=InteractionState.new()
 local pending_command_units = {}
 local game_state = "menu"
 local command_pause_before = nil
 
 local function pause_for_command()
-    if command_pause_before == nil then command_pause_before=game:is_paused() end
-    game:pause()
+    InteractionState.pause_for_command(interaction,game)
 end
 
 local function restore_command_pause()
-    if command_pause_before ~= nil then
-        game.paused=command_pause_before
-        command_pause_before=nil
-    end
+    InteractionState.restore_command_pause(interaction,game)
 end
 
 local function load_high_scores() high_scores=Score.load(TBL) end
@@ -88,18 +91,7 @@ local function calc_score() Score.calculate(game,settings) end
 
 local function rebuild_menu()
     if game then game.menu_confirm = nil end
-    level_names = {}
-    level_scores = {}
-
-    for _, file in ipairs(level_files) do
-        local data = TBL.parse_file("levels/" .. file)
-        local name = file
-        if data and data.meta then
-            name = data.meta.name or data.meta.value or file
-        end
-        table.insert(level_names, name)
-        table.insert(level_scores, high_scores[name] or 0)
-    end
+    level_names,level_scores=BattleFlow.level_menu(level_files,TBL,high_scores)
 
     if menu then
         menu:set_levels(level_names, level_scores)
@@ -109,70 +101,24 @@ local function rebuild_menu()
 end
 
 local function reset_input_state()
-    command_pause_before=nil
-    command_mode = "normal"
-    command_action = nil
-    command_hover_target = nil
-    command_controller:reset()
-    pending_command_units = {}
-    selection_start = nil
-    selection_rect = nil
-    dragging_camera = false
-    context_menu:hide()
-    global_menu:hide()
-    camera:enable_edge_scroll(false)
+    InteractionState.reset(interaction,game,camera,context_menu,global_menu,command_controller)
+    command_pause_before=nil;command_mode="normal";command_action=nil;command_hover_target=nil
+    pending_command_units={};selection_start=nil;selection_rect=nil;dragging_camera=false
 end
 
 local function start_level(index)
-    if index < 1 or index > #level_files then return false end
-
-    local ok, err = LevelManager.load_level(level_files[index], game)
-    if not ok then
-        print("Failed to load level: " .. tostring(err))
-        return false
-    end
-
-    current_level_name = game.level_name or level_files[index]
-    current_level_file = level_files[index]
-    game.player_team_id=game.player_team_id or Registry.default_player()
-    game.enemy_team_id=game.enemy_team_id or Registry.default_enemy()
-    game.team_id=game.player_team_id
-    Mission.start(game,level_files[index])
-    Advisor.start(game)
-    local ms=game:get_mothership(game.player_team)
-    local cx,cy=game:get_units_center()
-    if ms then cx,cy=ms.x,ms.y end
-    camera:focus_on(cx, cy)
-    camera.zoom = 0.8
-    camera.target_zoom = 0.8
-    camera:stop_follow()
-    reset_input_state()
-    game:resume()
-    game_state = "playing"
-    if not _G.VERIFY_RUNNING and not (game.advisor and game.advisor.tutorial) then
-        game_state="deployment"
-        game:pause()
-    end
+    local state,name,file=BattleFlow.start_level({game=game,camera=camera,level_files=level_files,reset_input=reset_input_state},index)
+    if not state then return false end
+    game_state,current_level_name,current_level_file=state,name,file
     return true
 end
 
 local function begin_briefing()
-    Simulation.deploy(game,Deployment.player_id(),Deployment.enemy_id(),Deployment.formation)
-    -- 队伍已部署后再生成战前小剧场，确保说话人和阵营映射完整。
-    Mission.start(game,current_level_file)
-    game.briefing={time=0}
-    game_state="briefing"
-    game:pause()
-    local ms=game:get_mothership(0)
-    camera:focus_on(ms.x,ms.y)
+    game_state=BattleFlow.begin_briefing({game=game,camera=camera,deployment=Deployment,level_file=current_level_file})
 end
 
 local function finish_briefing()
-    game.briefing=nil
-    Mission.advance(game,true)
-    game.reports={}
-    game_state="playing"
-    game:resume()
+    game_state=BattleFlow.finish_briefing(game)
 end
 
 function love.load(args)
@@ -459,19 +405,7 @@ function love.update(dt)
 
     game:update(dt*(game.skill_slow and game.skill_slow.scale or 1),dt)
 
-    if not game:is_paused() and not (game.advisor and game.advisor.tutorial) then
-        if LevelManager.check_victory(game) then
-            Mission.finish(game,"victory")
-            calc_score()
-            save_high_score()
-            require("systems.audio").play("victory")
-            game_state = "victory"
-        elseif LevelManager.check_defeat(game) then
-            Mission.finish(game,"defeat")
-            require("systems.audio").play("defeat")
-            game_state = "defeat"
-        end
-    end
+    game_state=BattleFlow.check_result(game,settings,high_scores,current_level_name,TBL) or game_state
 end
 
 local function draw_terrain()
@@ -622,57 +556,14 @@ function cancel_command()
     global_menu:hide()
 end
 
-local function commandable_selected_units(include_mothership)
-    local result = {}
-    for _, u in ipairs(game.selected_units) do
-        if u.alive and u.state ~= "dead" and u.state ~= "disabled" and (include_mothership or u.unit_type ~= "mothership") then
-            table.insert(result, u)
-        end
-    end
-    return result
-end
-
-local function set_units_returning(units)
-    for _, u in ipairs(units) do
-        if u.unit_type ~= "mothership" then
-            u.attack_target = nil
-            u.repair_target = nil
-            u.follow_target = nil
-            u.attack_move = nil
-            u.burst_queue = {}
-            u.route = nil
-            u.state = "returning"
-        end
-    end
-end
-
-
-local function select_all_command_units()
-    local all = game:get_all_friendly_units(game.player_team)
-    game:clear_selection()
-    for _, u in ipairs(all) do
-        u.selected = true
-        table.insert(game.selected_units, u)
-    end
-    return all
-end
+local function commandable_selected_units(include_mothership) return Selection.commandable(game,include_mothership) end
+local function set_units_returning(units) Selection.set_returning(units) end
+local function select_all_command_units() return Selection.select_all_command_units(game) end
 
 local function command_defense(units)
-    local ms = game:get_mothership(game.player_team)
-    if not ms then return end
-    for i, u in ipairs(units) do
-        if u.unit_type ~= "mothership" then
-            local angle = (i / math.max(1, #units)) * math.pi * 2
-            local radius = 150 + (i % 3) * 45
-            local tx = ms.x + math.cos(angle) * radius
-            local ty = ms.y + math.sin(angle) * radius
-            u.follow_target = ms
-            u.attack_target = nil
-            u.target_pos = {tx, ty}
-            u.state = "moving"
-            command_controller:add_feedback(u,tx,ty,0.20,1.0,0.36)
-        end
-    end
+    Selection.command_defense(game,units,function(u,tx,ty)
+        command_controller:add_feedback(u,tx,ty,0.20,1.0,0.36)
+    end)
 end
 
 function love.mousepressed(mx, my, button)
@@ -958,6 +849,9 @@ function show_context_menu(mx, my)
 end
 
 function execute_menu_action(action)
+    MenuActions.execute({game=game,context_menu=context_menu,global_menu=global_menu,start_targeting=start_targeting,show_context_menu=show_context_menu,hide_menus=hide_all_menus,commandable=commandable_selected_units,set_returning=set_units_returning,select_all=select_all_command_units,command_defense=command_defense},action)
+    return
+    --[[
     if game.advisor and game.advisor.panel_active then
         game.advisor.panel_close_at=(game.level_time or 0)+3
         game.advisor.life=math.min(game.advisor.life,3)
@@ -1008,9 +902,14 @@ function execute_menu_action(action)
     else
         hide_all_menus()
     end
+    end
+    ]]
 end
 
 function execute_global_command(action)
+    MenuActions.execute_global({game=game,start_targeting=start_targeting,hide_menus=hide_all_menus,select_all=select_all_command_units,set_returning=set_units_returning,command_defense=command_defense},action)
+    return
+    --[[
     local all = select_all_command_units()
     if #all == 0 then hide_all_menus(); return end
     if action == "global_move" then
@@ -1026,6 +925,8 @@ function execute_global_command(action)
         set_units_returning(all)
         hide_all_menus()
     end
+    end
+    ]]
 end
 
 function execute_targeted_command(mx, my, forced_target)

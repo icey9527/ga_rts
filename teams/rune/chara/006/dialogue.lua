@@ -1,9 +1,24 @@
 return {
   friendly = {
-    ready={"时机已至。请示下令。"},
-    interaction={"航向屡改，军心难定。还请早作决断。"},
-    follow={"我与你同行，不必顾虑。"},
-    follow_reply={"守好侧翼，莫要急进。"},
+    ready = {
+      "时机已至。请示下令。",
+      "特殊装备，释。请诸位稳住阵脚。",
+      "时机已至。",
+    },
+    interaction = {
+      "航向屡改，军心难定。还请早作决断。",
+      "又改指令了吗。……嗯，听着。",
+      "……频繁的指示。嗯，习惯了。",
+    },
+    follow = {
+      "我与你同行，不必顾虑。",
+      "枣，随行。",
+      "明白，跟在后面。",
+    },
+    follow_reply = {
+      "守好侧翼，莫要急进。",
+      "……间距，正好。",
+    },
     command = {
       "我已准备妥当。",
       "航线确认，开始机动。",
@@ -47,12 +62,15 @@ return {
     },
     energy = {
       "能量将尽。请准我回航。",
+      "……能量，快没了。",
     },
     supplied = {
       "补给完毕。谢过。",
+      "……嗯，满了。",
     },
     return_battle = {
       "枣，归队。",
+      "归队了。",
     },
 
   },
@@ -64,6 +82,24 @@ return {
       "随行中。",
     },
     follow_end = {
+      "随行至此。",
+    },
+    camera_follow_start = {
+      "在看吗。……随意。",
+    },
+    camera_follow_continue = {
+      "……还在。",
+    },
+    camera_follow_end = {
+      "……不看了？那便继续。",
+    },
+    formation_follow_start = {
+      "枣，随行。",
+    },
+    formation_follow_continue = {
+      "随行中。",
+    },
+    formation_follow_end = {
       "随行至此。",
     },
   enemy = {

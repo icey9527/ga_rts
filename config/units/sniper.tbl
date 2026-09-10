@@ -1,19 +1,42 @@
 [stats]
 type = "sniper"
-name = "远程定点机"
+name = "远程狙击机"
 max_hp = 420
 max_energy = 180
-speed = 90
-attack_damage = 210
+speed = 180
+attack_damage = 920
 attack_range = 1350
-attack_cooldown = 4.8
+attack_cooldown = 3.0
 attack_type = "ranged"
-projectile_speed = 380
-accuracy = 0.95
+projectile_speed = 3800
+attack_arc = 35
+accuracy = 0.995
 radius = 19
+
+[weapon.sniper_rifle]
+type = "ranged"
+visual = "sniper_rifle"
+sound = "beam"
+range = 1350
+damage = 920
+count = 1
+projectile_speed = 3800
+arc = 35
+direction = "front"
+heat_per_shot = 18
+max_heat = 100
+cool_rate = 14
+min_range = 600
+
+[behavior]
+retreat_distance = 650
+safe_distance = 950
+escape_speed_multiplier = 1.7
+escape_replan_interval = 0.8
+
 [skill]
 type = "charge_beam"
 windup = 1.8
 range = 1800
-damage = 650
+damage = 1500
 width = 32

@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>表情工作室</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10151c;color:#e3eaf2;font:15px system-ui}header{padding:24px 32px;border-bottom:1px solid #2d3949;display:flex;justify-content:space-between;align-items:center}h1{font-size:24px;margin:0}small,.muted{color:#9aaabd}main{max-width:1450px;margin:auto;padding:28px}nav{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:26px}label{display:grid;gap:8px;flex:1}select,input,button{font:inherit;color:inherit;background:#202c3a;border:1px solid #41536a;border-radius:8px;padding:10px}button{cursor:pointer}button:hover{border-color:#87ceff}button:disabled{opacity:.5;cursor:wait}h2{font-size:18px;margin:0 0 8px}.section{background:#18212d;border:1px solid #2d3949;border-radius:16px;padding:22px;margin-bottom:24px}#slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-top:20px}.slot{padding:12px;background:#202c3a;border-radius:12px;min-width:0}.slot button.image{width:100%;height:180px;display:grid;place-items:center;background:repeating-conic-gradient(#1a2330 0% 25%,#243042 0% 50%) 0/20px 20px;border:2px dashed #52677e}.slot img{max-width:100%;height:160px;object-fit:contain;pointer-events:none}.slot .over{border-color:#72ddc0!important;background:#32584f!important}.caption{font-size:12px;overflow-wrap:anywhere;color:#a8bacd;margin:9px 0;min-height:32px}.slot .clear{font-size:12px;padding:5px 10px}.poolbar{display:flex;gap:16px;justify-content:space-between;align-items:center;margin-bottom:20px}#pool{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}.candidate{padding:8px;position:relative;min-width:0}.candidate img{width:100%;height:110px;object-fit:contain;pointer-events:none}.candidate.active{outline:2px solid #73dabb}.candidate.used{border-color:#589585}.badge{display:block;font-size:11px;color:#8ee3c9;min-height:16px}#status{max-width:480px;color:#9ce2bf}#status.bad{color:#ffb6a2}#context{margin-bottom:18px;font-size:13px;color:#99adbf}#empty{padding:24px;color:#a8bacd}.help{line-height:1.8;color:#9baec3;font-size:13px}button:focus-visible{outline:3px solid #96cbff} @media(max-width:700px){main{padding:14px}header{padding:18px}#slots{grid-template-columns:repeat(2,minmax(0,1fr))}.poolbar{flex-wrap:wrap}}
+</style>
+<style>
+header{padding:14px 22px}main{padding:16px;max-width:1200px}.section{padding:14px;margin-bottom:16px}nav{margin-bottom:14px}#slots{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}.slot{width:112px;padding:7px}.slot h2{font-size:13px}.slot button.image{width:96px;height:96px;padding:0}.slot img{width:92px;height:92px;object-fit:contain}.caption{display:none}#pool{grid-template-columns:repeat(auto-fill,80px);gap:8px}.candidate{width:80px;padding:3px}.candidate img{width:72px;height:72px;object-fit:contain}.badge{font-size:10px}.slot .clear{margin-top:6px}.poolbar{margin-bottom:10px}#context{display:none}
+</style>
+<header><div><h1>表情工作室</h1><small>PORTRAIT STUDIO · 队伍 / 角色 / 皮肤</small></div><div id="status" role="status" aria-live="polite">选择游戏目录开始</div></header>
+<main><section class="section"><h2>本地资源 · 直接编辑</h2><p class="help">用 Chrome / Edge 打开此文件，选择 rts_game（或 teams）目录并允许写入。所有图片与配置留在本机，无需 Python、端口或网络。</p><button id="open">选择游戏目录</button></section><nav><label>队伍<select id="team"></select></label><label>皮肤<select id="skin"></select></label><label>角色<select id="chara"></select></label><button id="reload">重新载入</button></nav>
+<div id="context"></div><section class="section"><h2>表情槽位</h2><div class="help">拖拽候选图片到槽位；也可以先点击候选，再点击槽位。修改后自动保存。<br>清除指定后，由游戏按文件名规则选择表情。原皮和皮肤分别保存。</div><div id="slots"></div></section>
+<section class="section"><div class="poolbar"><div><h2>候选图片 <small id="count"></small></h2><small>完整显示图片，不裁切；描边表示已有槽位使用</small></div><input id="search" placeholder="搜索图片文件名" aria-label="搜索候选图片"></div><div id="pool"></div><div id="empty" hidden>没有可编辑的候选图片。</div></section></main><script>
+// Standalone filesystem layer; no server, fetch, external library or game save access.
+const EMOTIONS = [["normal", "普通"], ["attack", "攻击"], ["idle", "日常"], ["hit", "受击"]];
+function parseChara(text) {
+  let active = false; const result = {};
+  for (const line of text.split(/\r?\n/)) {
+    const header = line.trim().match(/^\[([^\]]+)\]$/);
+    if (header) { active = header[1] === "chara"; continue; }
+    if (!active) continue;
+    const match = line.match(/^\s*(\w+)\s*=\s*(.*)$/);
+    if (!match) continue;
+    let value = match[2].trim();
+    if (value.startsWith('"')) value = value.slice(1, value.indexOf('"', 1));
+    else value = value.split(/[;#]/)[0].trim();
+    result[match[1]] = value;
+  }
+  return result;
+}
+function updateChara(text, assignment, prefix = "face") {
+  const nl = text.includes("\r\n") ? "\r\n" : "\n", bom = text.startsWith("\uFEFF") ? "\uFEFF" : "";
+  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/);
+  let start = lines.findIndex(line => line.trim() === "[chara]");
+  if (start < 0) { lines.push("[chara]"); start = lines.length - 1; }
+  let end = lines.findIndex((line, i) => i > start && /^\s*\[/.test(line));
+  if (end < 0) end = lines.length;
+  const fields = [];
+  for (const [key] of EMOTIONS) {
+    const file = assignment[key];
+    if (!file) continue;
+    if (typeof file !== "string" || /[/"\\\r\n]/.test(file)) throw Error("图片文件名无效");
+    fields.push('face_' + key + '="' + prefix + "/" + file + '"');
+  }
+  const body = lines.slice(start + 1, end).filter(line => !/^\s*face_(normal|attack|idle|hit)\s*=/.test(line));
+  return bom + [...lines.slice(0, start + 1), ...fields, ...body, ...lines.slice(end)].join(nl);
+}
+async function optionalDir(parent, name) {
+  try { return await parent.getDirectoryHandle(name); } catch (e) { if (e.name === "NotFoundError") return null; throw e; }
+}
+async function readConfig(dir) {
+  try {
+    const handle = await dir.getFileHandle("chara.tbl");
+    const file = await handle.getFile();
+    return {handle, text: new TextDecoder("utf-8", {ignoreBOM: true}).decode(await file.arrayBuffer())};
+  } catch (e) { if (e.name === "NotFoundError") return {handle: null, text: ""}; throw e; }
+}
+async function directories(dir) {
+  const result = [];
+  if (dir) for await (const entry of dir.values()) if (entry.kind === "directory") result.push(entry);
+  return result.sort((a,b) => a.name.localeCompare(b.name));
+}
+async function subDirectory(dir, path) {
+  let current = dir;
+  for (const part of path.replaceAll("\\", "/").split("/")) {
+    if (!part || part === ".") continue;
+    if (part === ".." || part.includes(":")) throw Error("face 路径必须在角色目录内");
+    current = await optionalDir(current, part);
+    if (!current) return null;
+  }
+  return current;
+}
+async function scanTeams(teams) {
+  const entries = [];
+  for (const team of await directories(teams)) {
+    const base = await optionalDir(team, "chara");
+    const variants = [{skin: "", root: team}];
+    for (const skin of await directories(await optionalDir(team, "skins"))) variants.push({skin: skin.name, root: skin});
+    for (const variant of variants) {
+      for (const dir of await directories(await optionalDir(variant.root, "chara"))) {
+        const config = await readConfig(dir), cfg = parseChara(config.text);
+        const originalDir = base && await optionalDir(base, dir.name);
+        const original = originalDir ? parseChara((await readConfig(originalDir)).text) : {};
+        const prefix = variant.skin ? "face" : (cfg.face || "face");
+        const face = await subDirectory(dir, prefix);
+        if (!face) continue;
+        const handles = new Map();
+        for await (const file of face.values()) if (file.kind === "file" && file.name.endsWith(".png")) handles.set(file.name, file);
+        if (!handles.size) continue;
+        const assign = {}, inherited = {};
+        for (const [key] of EMOTIONS) {
+          assign[key] = (cfg["face_" + key] || "").replaceAll("\\", "/").split("/").pop();
+          inherited[key] = variant.skin ? (original["face_" + key] || "").replaceAll("\\", "/").split("/").pop() : "";
+        }
+        entries.push({team:team.name, skin:variant.skin, cid:dir.name, name:cfg.name || original.name || dir.name,
+          dir, prefix, text:config.text, handles, files:[...handles.keys()].sort(), assign, inherited,
+          face_dir: team.name + "/" + (variant.skin ? "skins/" + variant.skin + "/" : "") + "chara/" + dir.name + "/" + prefix,
+          urls: {}});
+      }
+    }
+  }
+  return entries;
+}
+async function saveAssignment(owner, next) {
+  for (const value of Object.values(next)) if (value && !owner.handles.has(value)) throw Error("图片不属于当前角色/皮肤");
+  const before = await readConfig(owner.dir);
+  if (before.text !== owner.text) throw Error("文件被其他窗口修改，请重新载入");
+  const output = updateChara(before.text, next, owner.prefix);
+  const handle = before.handle || await owner.dir.getFileHandle("chara.tbl", {create:true});
+  const stream = await handle.createWritable();
+  try {
+    await stream.write(output);
+    await stream.close();
+  } catch (error) { try { await stream.abort(); } catch {} throw error; }
+  owner.text = output;
+}
+
+if (typeof document !== "undefined") {
+const $ = id => document.getElementById(id);
+let data = [], current = null, selected = "", saving = false, teamsHandle = null, refreshId = 0;
+const revoke = () => { for (const c of data) { for (const url of Object.values(c.urls)) URL.revokeObjectURL(url); c.urls = {}; } };
+const identity = c => JSON.stringify([c.team, c.skin, c.cid]);
+function status(text, bad = false) { $("status").textContent = text; $("status").className = bad ? "bad" : ""; }
+function fill(id, entries, previous) {
+  $(id).replaceChildren(...entries.map(([value, label]) => new Option(label, value)));
+  if (entries.some(([value]) => value === previous)) $(id).value = previous;
+}
+function chooseSkin() {
+  fill("skin", [...new Set(data.filter(c => c.team === $("team").value).map(c => c.skin))].map(s => [s, s || "原皮（原版）"]));
+  chooseCharacter();
+}
+function chooseCharacter() {
+  fill("chara", data.filter(c => c.team === $("team").value && c.skin === $("skin").value).map(c => [c.cid, `${c.cid} · ${c.name}`]), $("chara").value);
+  refresh();
+}
+async function refresh() {
+  const version = ++refreshId;
+  revoke();
+  current = data.find(c => c.team === $("team").value && c.skin === $("skin").value && c.cid === $("chara").value);
+  selected = ""; $("search").value = "";
+  $("context").textContent = current ? `${current.name} · ${current.skin || "原皮"} · ${current.face_dir}` : "没有可编辑角色";
+  render();
+  if (!current) return;
+  const owner = current;
+  try {
+    for (const file of owner.files) {
+      const blob = await owner.handles.get(file).getFile();
+      if (version !== refreshId) return;
+      owner.urls[file] = URL.createObjectURL(blob);
+    }
+    if (version === refreshId) render();
+  } catch (error) { status("图片读取失败：" + error.message, true); }
+}
+function picture(file) {
+  const img = document.createElement("img");
+  if (current.urls[file]) img.src = current.urls[file];
+  img.alt = file; img.loading = "lazy"; img.draggable = false;
+  return img;
+}
+function render() {
+  $("slots").replaceChildren(); $("pool").replaceChildren();
+  $("empty").hidden = !!current;
+  if (!current) return;
+  for (const [key, label] of EMOTIONS) {
+    const card = document.createElement("div"); card.className = "slot";
+    const title = document.createElement("h2"); title.textContent = label;
+    const box = document.createElement("button"); box.className = "image"; box.disabled = saving;
+    box.setAttribute("aria-label", `分配${label}表情`);
+    const file = current.assign[key] || current.inherited[key];
+    if (file) box.append(picture(file)); else box.textContent = "拖入图片 / 点击分配";
+    box.onclick = () => { if (selected) assign(key, selected); else status("请先选择一张候选图片"); };
+    box.ondragover = event => { if (!saving) { event.preventDefault(); box.classList.add("over"); } };
+    box.ondragleave = () => box.classList.remove("over");
+    box.ondrop = event => {
+      event.preventDefault(); box.classList.remove("over");
+      try { const payload = JSON.parse(event.dataTransfer.getData("text/plain"));
+        if (payload.owner !== identity(current)) throw Error();
+        assign(key, payload.file);
+      } catch { status("请从当前角色的候选区拖入图片", true); }
+    };
+    const caption = document.createElement("div"); caption.className = "caption"; caption.textContent = current.assign[key] || (file ? "继承原皮指定：" + file : "自动选择（未显式指定）");
+    const clear = document.createElement("button"); clear.className = "clear"; clear.textContent = "清除指定"; clear.disabled = saving || !current.assign[key]; clear.onclick = () => assign(key, "");
+    card.append(title, box, caption, clear); $("slots").append(card);
+  }
+  const files = current.files.filter(f => f.toLowerCase().includes($("search").value.toLowerCase()));
+  $("count").textContent = `(${files.length}/${current.files.length})`;
+  for (const file of files) {
+    const used = EMOTIONS.filter(([k]) => current.assign[k] === file).map(([, label]) => label).join(" · ");
+    const card = document.createElement("button"); card.className = `candidate ${used ? "used" : ""} ${selected === file ? "active" : ""}`;
+    card.draggable = !saving; card.disabled = saving; card.title = file;
+    card.ondragstart = event => { event.dataTransfer.setData("text/plain", JSON.stringify({owner: identity(current), file})); event.dataTransfer.effectAllowed = "copy"; };
+    card.onclick = () => { selected = file; render(); status("已选择图片，点击上方槽位即可分配"); };
+    const badge = document.createElement("span"); badge.className = "badge"; badge.textContent = used;
+    const caption = document.createElement("div"); caption.className = "caption"; caption.textContent = file;
+    card.append(picture(file), badge, caption); $("pool").append(card);
+  }
+}
+function lock(value) {
+  saving = value;
+  for (const id of ["team", "skin", "chara", "reload", "open"]) $(id).disabled = value;
+  render();
+}
+async function assign(key, file) {
+  if (saving || !current || (file && !current.files.includes(file)) || current.assign[key] === file) return;
+  const owner = current, next = {...owner.assign, [key]: file};
+  lock(true); status("正在保存…");
+  try {
+    const action = () => saveAssignment(owner, next);
+    if (navigator.locks) await navigator.locks.request("portrait:" + identity(owner), action);
+    else await action();
+    owner.assign = next;
+    status("已自动保存 ✓");
+  } catch (error) { status(`未保存：${error.message}。原槽位保留，可重新载入后重试。`, true); }
+  finally { lock(false); }
+}
+async function load() {
+  if (!teamsHandle) return;
+  lock(true); status("正在扫描队伍与皮肤…");
+  try {
+    const fresh = await scanTeams(teamsHandle);
+    revoke(); data = fresh;
+    fill("team", [...new Set(data.map(c => c.team))].map(t => [t,t]), $("team").value);
+    chooseSkin(); status(data.length ? "就绪 · " + data.length + " 个角色/皮肤条目" : "目录内没有可编辑的 face 图片");
+  } catch (error) { status(error.message, true); }
+  finally { lock(false); }
+}
+async function openDirectory() {
+  if (!window.showDirectoryPicker) { status("请用桌面版 Chrome 或 Edge 打开此 HTML；当前浏览器不支持直接保存本地文件。", true); return; }
+  try {
+    const root = await window.showDirectoryPicker({mode:"readwrite", id:"rts-portraits"});
+    const teams = root.name === "teams" ? root : await optionalDir(root, "teams");
+    if (!teams) throw Error("请选择 rts_game 或 teams 文件夹");
+    teamsHandle = teams;
+    document.getElementById("reconnect")?.remove();
+    await load();
+    try { await rememberedDirectory(teams); } catch { status("目录已连接；浏览器未允许记住目录，下次需重新选择"); }
+  } catch (error) { if (error.name !== "AbortError") status(error.message, true); }
+}
+$("open").onclick = openDirectory;
+async function rememberedDirectory(handle) {
+  const db = await new Promise((resolve,reject) => {
+    const request=indexedDB.open("rts-portrait-studio",1);
+    request.onupgradeneeded=()=>request.result.createObjectStore("directories");
+    request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);
+  });
+  try {
+    return await new Promise((resolve,reject) => {
+      const tx=db.transaction("directories",handle ? "readwrite" : "readonly");
+      const store=tx.objectStore("directories");
+      const request=handle ? store.put(handle,"teams") : store.get("teams");
+      tx.oncomplete=()=>resolve(request.result);tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error);
+    });
+  } finally { db.close(); }
+}
+async function restoreDirectory() {
+  try {
+    const saved=await rememberedDirectory();
+    if (!saved) return;
+    teamsHandle=saved;
+    if (await saved.queryPermission({mode:"readwrite"}) === "granted") await load();
+    else {
+      const button=document.createElement("button");button.id="reconnect";button.textContent="连接上次目录";
+      button.onclick=async()=>{
+        try {
+          if (saving) return;
+          if (await saved.requestPermission({mode:"readwrite"}) !== "granted") throw Error("未获得目录权限，可重新选择目录");
+          teamsHandle=saved;await load();button.remove();
+        } catch(error) { status(error.message,true); }
+      };
+      $("open").after(button);status("已记住上次目录，点击连接即可");
+    }
+  } catch { /* Storage may be disabled for local files; directory selection still works. */ }
+}
+$("team").onchange = chooseSkin; $("skin").onchange = chooseCharacter;
+$("chara").onchange = refresh; $("search").oninput = render; $("reload").onclick = load;
+window.addEventListener("beforeunload", event => { if (saving) { event.preventDefault(); event.returnValue = ""; } });
+status(window.showDirectoryPicker ? "选择游戏目录开始 · 无需启动服务" : "请使用桌面版 Chrome / Edge 打开本文件", !window.showDirectoryPicker);
+if (window.showDirectoryPicker) restoreDirectory();
+
+}
+</script></html>

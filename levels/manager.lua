@@ -138,6 +138,12 @@ function load_unit_config(unit_id)
         cfg.stats.max_hp=math.floor((cfg.stats.max_hp or 100)*p.hull_multiplier)
         cfg.stats.attack_cooldown=(cfg.stats.attack_cooldown or 1)*p.cooldown_multiplier
         cfg.stats.projectile_speed=(cfg.stats.projectile_speed or 400)*p.projectile_speed_multiplier
+        for section,weapon in pairs(cfg) do
+            if type(section)=="string" and section:match("^weapon%.") then
+                if weapon.cooldown then weapon.cooldown=weapon.cooldown*p.cooldown_multiplier end
+                if weapon.projectile_speed then weapon.projectile_speed=weapon.projectile_speed*p.projectile_speed_multiplier end
+            end
+        end
         unit_configs[unit_id] = cfg
         return cfg
     end

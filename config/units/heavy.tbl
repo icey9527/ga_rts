@@ -9,6 +9,8 @@ attack_damage = 58
 attack_range = 520
 attack_cooldown = 1.65
 attack_type = "artillery"
+attack_arc = 100
+attack_direction = "front"
 projectile_count = 2
 
 [weapon.main]
@@ -16,6 +18,8 @@ type = "artillery"
 range = 520
 damage = 58
 count = 2
+arc = 100
+direction = "front"
 
 [weapon.machine_gun]
 type = "ranged"
@@ -23,6 +27,11 @@ range = 260
 damage = 7
 cooldown = 0.3
 count = 2
+arc = 150
+direction = "front"
+heat_per_shot = 3
+max_heat = 100
+cool_rate = 18
 burst_count = 1
 spread_angle = 0.24
 target_spread = 180

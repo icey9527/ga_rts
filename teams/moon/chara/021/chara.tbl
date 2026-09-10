@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac021_0000.agi.png"
+face_attack="face/fac021_0006_m0.agi.png"
+face_idle="face/fac021_1001_m0.agi.png"
+face_hit="face/fac021_1010.agi.png"
 type=-1
 id=021
 name=雷斯特

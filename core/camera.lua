@@ -39,19 +39,37 @@ end
 
 function Camera:set_follow(unit)
     if self.follow_target==unit then return end
-    if self.follow_target and self.follow_target.alive and self.follow_target.game then
-        self.follow_target.game:report_event(self.follow_target,"camera_follow_end","")
+    local old_target=self.follow_target
+    if old_target and old_target.alive and old_target.game then
+        local cfg=require("config.comms")
+        local started=old_target.camera_follow_started_at or -100
+        if cfg.camera_follow_end_enabled
+           and (old_target.game.level_time-started) >= (cfg.camera_follow_end_min_duration or 3.0) then
+            old_target.game:report_event(old_target,"camera_follow_end","")
+        end
     end
     self.follow_target = unit
     if unit and unit.game then
-        unit.camera_follow_report_time=unit.game.level_time
-        unit.game:report_event(unit,"camera_follow_start","")
+        local cfg=require("config.comms")
+        local g=unit.game
+        unit.camera_follow_started_at=g.level_time
+        unit.camera_follow_continue_report_time=nil
+        local last=g.camera_follow_start_time or -100
+        if g.level_time-last >= (cfg.camera_follow_start_interval or 2.5) then
+            g.camera_follow_start_time=g.level_time
+            g:report_event(unit,"camera_follow_start","")
+        end
     end
 end
 
 function Camera:stop_follow()
     if self.follow_target and self.follow_target.alive and self.follow_target.game then
-        self.follow_target.game:report_event(self.follow_target,"camera_follow_end","")
+        local cfg=require("config.comms")
+        local started=self.follow_target.camera_follow_started_at or -100
+        if cfg.camera_follow_end_enabled
+           and (self.follow_target.game.level_time-started) >= (cfg.camera_follow_end_min_duration or 10.0) then
+            self.follow_target.game:report_event(self.follow_target,"camera_follow_end","")
+        end
     end
     self.follow_target = nil
 end
@@ -80,10 +98,15 @@ function Camera:update(dt)
         local cfg=require("config.comms")
         local g=self.follow_target.game
         if g then
-            local last=self.follow_target.camera_follow_report_time or g.level_time
-            if g.level_time-last >= (cfg.camera_follow_continue_interval or 20) then
+            local started=self.follow_target.camera_follow_started_at or g.level_time
+            local last=self.follow_target.camera_follow_continue_report_time
+            local delay=cfg.camera_follow_continue_delay or 5.0
+            local interval=cfg.camera_follow_continue_interval or 20.0
+            local due=(not last and g.level_time-started>=delay)
+                or (last and g.level_time-last>=interval)
+            if due then
                 g:report_event(self.follow_target,"camera_follow_continue","")
-                self.follow_target.camera_follow_report_time=g.level_time
+                self.follow_target.camera_follow_continue_report_time=g.level_time
             end
         end
         local tx = self.follow_target.x

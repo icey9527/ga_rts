@@ -17,7 +17,7 @@ end
 local P = {}
 P.__index = P
 
-function Projectile.basic(x, y, tx, ty, dmg, speed, target, z, style)
+function Projectile.basic(x, y, tx, ty, dmg, speed, target, z, style, source)
     local dx, dy = tx - x, ty - y
     local dist = math.sqrt(dx*dx + dy*dy)
     if dist == 0 then dist = 1 end
@@ -34,13 +34,14 @@ function Projectile.basic(x, y, tx, ty, dmg, speed, target, z, style)
         splash = 0,
         homing = false,
         alive = true,
-        life = 3.0,
+        life = math.max(3.0,dist/math.max(1,speed)+0.5),
         trail = {},
         style = style or "main_gun",
+        source = source,
     }, P)
 end
 
-function Projectile.artillery(x, y, tx, ty, dmg, splash, speed, z, team, style)
+function Projectile.artillery(x, y, tx, ty, dmg, splash, speed, z, team, style, source)
     local dx, dy = tx - x, ty - y
     local dist = math.sqrt(dx*dx + dy*dy)
     if dist == 0 then dist = 1 end
@@ -58,13 +59,14 @@ function Projectile.artillery(x, y, tx, ty, dmg, splash, speed, z, team, style)
         team = team,
         homing = false,
         alive = true,
-        life = 3.0,
+        life = math.max(3.0,dist/math.max(1,speed)+0.5),
         trail = {},
         style = style or "artillery",
+        source = source,
     }, P)
 end
 
-function Projectile.missile(x, y, target, dmg, speed, z, style)
+function Projectile.missile(x, y, target, dmg, speed, z, style, source)
     return setmetatable({
         x = x, y = y,
         vx = 0, vy = 0,
@@ -83,6 +85,7 @@ function Projectile.missile(x, y, target, dmg, speed, z, style)
         trail = {},
         smoke_timer = 0,
         style = style or "missile",
+        source = source,
     }, P)
 end
 
@@ -164,7 +167,7 @@ function P:_on_hit(game)
                 local d = math.sqrt((u.x-self.x)^2 + (u.y-self.y)^2)
                 if d <= self.splash then
                     local ratio = 1 - (d / self.splash) * 0.5
-                    u:take_damage(math.floor(self.damage * ratio))
+                    u:take_damage(math.floor(self.damage * ratio),self.source)
                 end
             end
         end
@@ -172,7 +175,7 @@ function P:_on_hit(game)
     else
         -- direct hit
         if self.target and self.target.alive and self.target.state ~= "dead" and (self.target.x-self.x)^2+(self.target.y-self.y)^2<=((self.target.radius or 15)+8)^2 then
-            self.target:take_damage(self.damage)
+            self.target:take_damage(self.damage,self.source)
         end
         game:add_effect(Effect.hit_spark(self.x, self.y-(self.z or 0)*0.22))
     end
@@ -186,13 +189,13 @@ function P:draw()
     local flash = get_image("assets/effects/beams.bmp.png")
 
     local style=self.style or (self.homing and "missile" or "main_gun")
-    local colors={main_gun={1,0.86,0.35},machine_gun={0.35,0.9,1.0},missile={1,0.42,0.12},artillery={1,0.55,0.18},beam={0.7,0.9,1.0}}
+    local colors={main_gun={1,0.86,0.35},machine_gun={0.35,0.9,1.0},missile={1,0.42,0.12},artillery={1,0.55,0.18},beam={0.7,0.9,1.0},sniper_rifle={0.75,0.95,1.0},interceptor_tracer={0.95,0.98,1.0}}
     local col=colors[style] or colors.main_gun
     for i = 1, #self.trail do
         local t = self.trail[i]
         local k = i / #self.trail
-        local alpha = (self.homing and 0.28 or (style=="machine_gun" and 0.28 or 0.16)) * k
-        local radius = self.homing and (7 * (1 - k) + 2) or (style=="artillery" and 4 or 2)
+        local alpha = (self.homing and 0.28 or (style=="machine_gun" and 0.28 or (style=="interceptor_tracer" and 0.42 or (style=="sniper_rifle" and 0.34 or 0.16)))) * k
+        local radius = self.homing and (7 * (1 - k) + 2) or (style=="artillery" and 4 or (style=="sniper_rifle" and 2.4 or (style=="interceptor_tracer" and 1.2 or 2)))
         if smoke then
             love.graphics.setColor(col[1], col[2], col[3], alpha * 2.0)
             local s = radius / math.max(1, smoke:getWidth()) * 2.8
@@ -203,7 +206,28 @@ function P:draw()
         end
     end
 
-    if style=="beam" then
+    if style=="tiger_cannon" then
+        local a=atan2(self.vy,self.vx)
+        local dx,dy=math.cos(a),math.sin(a)
+        love.graphics.setColor(1,0.45,0.12,0.22)
+        love.graphics.setLineWidth(9)
+        love.graphics.line(self.x-dx*26,y-dy*26,self.x,y)
+        love.graphics.setColor(1,0.85,0.48,1)
+        love.graphics.setLineWidth(4)
+        love.graphics.line(self.x-dx*18,y-dy*18,self.x,y)
+        love.graphics.setLineWidth(1)
+    elseif style=="sniper_rifle" then
+        -- 狙击弹是高速实体弹，不是持续光束；用短而亮的线体强化“快、准、狠”。
+        local tx,ty=self.x-self.vx*0.035,y-self.vy*0.035
+        love.graphics.setColor(col[1],col[2],col[3],0.95)
+        love.graphics.setLineWidth(3);love.graphics.line(self.x,y,tx,ty)
+        love.graphics.setLineWidth(1);love.graphics.setColor(1,1,1,1)
+    elseif style=="interceptor_tracer" then
+        local a=math.atan2(self.vy,self.vx);local dx,dy=math.cos(a)*10,math.sin(a)*10
+        love.graphics.setColor(col[1],col[2],col[3],0.95)
+        love.graphics.setLineWidth(1.2);love.graphics.line(self.x-dx,y-dy,self.x+dx,y+dy)
+        love.graphics.setLineWidth(1)
+    elseif style=="beam" then
         love.graphics.setColor(col[1],col[2],col[3],0.95)
         love.graphics.setLineWidth(3);love.graphics.line(self.x,y,self.target_pos[1],self.target_pos[2]);love.graphics.setLineWidth(1)
     elseif self.homing then
@@ -219,7 +243,9 @@ function P:draw()
         love.graphics.circle("fill", self.x, y, style=="artillery" and 5 or 3.5)
     else
         love.graphics.setColor(col[1], col[2], col[3], 0.92)
-        if style=="machine_gun" then love.graphics.setLineWidth(2);love.graphics.line(self.x-7,y,self.x+7,y);love.graphics.setLineWidth(1)
+        if style=="machine_gun" then
+            local a=math.atan2(self.vy,self.vx);local dx,dy=math.cos(a)*7,math.sin(a)*7
+            love.graphics.setLineWidth(2);love.graphics.line(self.x-dx,y-dy,self.x+dx,y+dy);love.graphics.setLineWidth(1)
         elseif style=="artillery" then love.graphics.circle("fill",self.x,y,5)
         else love.graphics.circle("fill", self.x, y, 3) end
     end

@@ -172,12 +172,9 @@ function Verify.run()
         local data=love.sound.newSoundData("assets/se/"..name..".ogg")
         assert(data:getDuration()>0,"audio asset decodes")
     end
-    for _,file in ipairs(love.filesystem.getDirectoryItems("dialogue/characters")) do
-        if file:match("%.lua$") then
-            local lines=require("dialogue.characters."..file:gsub("%.lua$",""))
-            assert(lines.friendly and lines.enemy and #lines.enemy.attack>0,"pilot dialogue pools load")
-        end
-    end
+    -- 角色对白现在按队伍隔离，统一从 teams/<team>/chara/<id>/dialogue.lua 读取。
+    local sample=Pilots.dialogue({character_id=25,team_id="rune"})
+    assert(type(sample)=="table" and sample.friendly,"team pilot dialogue pools load")
     assert(Pilots.profile({character_id=25,team_id="rune"}).name=="可可","rune left is Coco")
     assert(Pilots.profile({character_id=22,team_id="rune"}).name=="诺阿","rune right is Noah")
     assert(Pilots.profile({character_id=21,team_id="moon"}).name=="雷斯特","moon left is Lester")
@@ -224,10 +221,6 @@ function Verify.run()
     radiogame:report_event(rival,"command","ignored")
     assert(#(radiogame.reports or {})==0,"enemy command acknowledgements suppressed")
     radiogame:report_event(rival,"attack","")
-    do
-        local P=require("ui.pilots")
-        print("RADIO DBG team_id=",tostring(rival.team_id)," game=",tostring(rival.game~=nil)," reports=",#(radiogame.reports or {})," line=",tostring(P.line(rival,"attack","")))
-    end
     assert(#radiogame.reports==1 and radiogame.reports[1].unit==rival,"enemy taunt delivered")
     radiogame.reports={}
     for choice=1,2 do

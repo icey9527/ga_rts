@@ -11,6 +11,38 @@ attack_type = "artillery"
 projectile_speed = 155
 splash_radius = 75
 radius = 35
+
+[weapon.heavy_cannon]
+name = "双联重炮"
+type = "artillery"
+visual = "tiger_cannon"
+sound = "artillery"
+range = 660
+damage = 250
+count = 2
+cooldown = 5.8
+arc = 110
+direction = "front"
+projectile_speed = 340
+splash_radius = 75
+heat_per_shot = 18
+
+[weapon.barrage]
+name = "压制弹幕"
+type = "ranged"
+visual = "machine_gun"
+sound = "shot"
+range = 420
+damage = 30
+count = 5
+burst_count = 2
+burst_delay = 0.12
+cooldown = 2.8
+arc = 180
+direction = "front"
+projectile_speed = 720
+heat_per_shot = 2
+
 [skill]
 type = "missile_barrage"
 count = 14

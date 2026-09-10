@@ -1,0 +1,12 @@
+[chara]
+id=003
+name=月咏
+face=face
+hit=face
+chara=chara.png
+dialogue=dialogue.lua
+type=3
+face_normal=f_tsuku_0101ak.png
+face_attack=f_tsuku_0101ik.png
+face_idle=f_tsuku_0101eg.png
+face_hit=f_tsuku_0102aw.png

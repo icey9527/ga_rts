@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac006_0001.agi.png"
+face_attack="face/fac006_1006_m2.agi.png"
+face_idle="face/fac006_0002_m2.agi.png"
+face_hit="face/fac006_0011.agi.png"
 id=006
 name=枣
 face=face

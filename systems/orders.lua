@@ -14,7 +14,7 @@ function Orders.issue(game,units,action,target,x,y)
             local had_follow=u.follow_target
             u.attack_target,u.follow_target,u.repair_target,u.target_pos,u.attack_move=nil,nil,nil,nil,nil
             if had_follow and action~="follow" then game:report_event(u,"formation_follow_end","") end
-            u.burst_queue={}
+            require("battle.unit.combat").cancel_bursts(u)
             u.route=nil
             u.manual_order=true
             u.state_timer=0

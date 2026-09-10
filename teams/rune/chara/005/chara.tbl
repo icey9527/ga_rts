@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac005_0001.agi.png"
+face_attack="face/fac005_1006_m2.agi.png"
+face_idle="face/fac005_0002.agi.png"
+face_hit="face/fac005_0011.agi.png"
 id=005
 name=阿妮丝
 face=face

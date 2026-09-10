@@ -1,0 +1,12 @@
+[chara]
+id=002
+name=妖精
+face=face
+hit=face
+chara=chara.png
+type=-2
+dialogue=dialogue.lua
+face_normal=f_yousei_0101ak.png
+face_attack=f_yousei_0101ik.png
+face_idle=f_yousei_0101eg.png
+face_hit=f_yousei_0101aw.png

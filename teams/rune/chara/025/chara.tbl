@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac025_0000.agi.png"
+face_attack="face/fac025_0006_m2.agi.png"
+face_idle="face/fac025_0002.agi.png"
+face_hit="face/fac025_0011.agi.png"
 type=-1
 id=025
 name=可可

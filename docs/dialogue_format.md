@@ -54,7 +54,7 @@ return {
 - `camera_follow_end`：镜头停止跟随或切换到另一台机体时触发
 - `formation_follow_start` / `formation_follow_continue` / `formation_follow_end`：机体跟随命令的三个事件
 
-发言间隔配置在 `config/comms.lua`：`report_interval` 是同一机体连续两句通讯的最短间隔，`follow_continue_interval` 控制跟随持续播报的间隔，`follow_priority_window` 控制跟随角色抢话时的短暂优先窗口。优先级只影响窗口内的并发播报，不会长期压制敌方；跟随结束后立即回收优先状态。
+发言间隔配置在 `config/comms.lua`：`report_interval` 是同一机体连续两句通讯的最短间隔，`formation_follow_continue_interval` 控制机体跟随持续播报，`camera_follow_continue_delay` 要求镜头单独跟随某台机体至少 10 秒后才允许第一次持续闲聊，`camera_follow_continue_interval` 控制该机体后续持续闲聊间隔，`camera_follow_start_interval` 控制玩家快速切换镜头时的全局 CD，`camera_follow_end_enabled` 控制是否显示脱离镜头跟随对白，`camera_follow_end_min_duration` 要求镜头单独跟随该机体至少 10 秒才允许触发结束对白。每台机体保存自己的开始时间和持续闲聊时间，不共用计时字段。`follow_priority_window` 控制跟随角色抢话时的短暂优先窗口。优先级只影响窗口内的并发播报，不会长期压制敌方；跟随结束后立即回收优先状态。
 
 跟随台词兼容两种位置：旧格式可写在 `friendly.follow` / `friendly.follow_reply`；新的 `follow_start`、`follow_continue`、`follow_end` 可以直接写在对白表顶层。读取器会优先读取 `friendly` 下的同名字段，再读取顶层字段。
 

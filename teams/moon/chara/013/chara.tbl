@@ -1,4 +1,8 @@
 [chara]
+face_normal="face/fac013_0000.agi.png"
+face_attack="face/fac013_0006_m0.agi.png"
+face_idle="face/fac013_0002_m2.agi.png"
+face_hit="face/fac013_0011.agi.png"
 id=013
 name=佛特
 face=face

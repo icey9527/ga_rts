@@ -18,7 +18,7 @@ state = lua.luaL_newstate()
 lua.luaL_openlibs(state)
 errors = []
 files = [root / "main.lua", root / "conf.lua"]
-for folder in ("core", "systems", "entities", "ui", "config", "units", "dialogue", "levels", "tools"):
+for folder in ("core", "systems", "entities", "ui", "config", "units", "battle", "levels", "tools"):
     files.extend((root / folder).rglob("*.lua"))
 for path in files:
     if lua.luaL_loadfile(state, str(path).encode("utf-8")):
