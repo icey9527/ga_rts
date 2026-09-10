@@ -59,6 +59,15 @@ return {
 
   },
 
+    follow_start = {
+      "收到，侧翼交给我。",
+    },
+    follow_continue = {
+      "还在跟着呢。",
+    },
+    follow_end = {
+      "跟到这里就够了，接下来自己小心。",
+    },
   enemy = {
     attack = {
       "目标进入射程——各机，自由开火！",

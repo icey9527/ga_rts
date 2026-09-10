@@ -56,6 +56,16 @@ return {
     },
 
   },
+    follow_start = {
+      "多用途机体，护航也可以。",
+      "跟上了。",
+    },
+    follow_continue = {
+      "还在跟着。……别催。",
+    },
+    follow_end = {
+      "护航结束。下个任务？",
+    },
   enemy = {
     attack = {
       "胆敢阻挡——就扫平。",

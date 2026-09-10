@@ -55,6 +55,15 @@ return {
 
   },
 
+    follow_start = {
+      "娜诺娜诺，跟上啦！",
+    },
+    follow_continue = {
+      "还跟着哦！",
+    },
+    follow_end = {
+      "跟到这里啦！",
+    },
   enemy = {
     attack = {
       "目标进入射程！娜诺娜诺的反击开始的说！",

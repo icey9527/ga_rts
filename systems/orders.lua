@@ -11,11 +11,16 @@ function Orders.issue(game,units,action,target,x,y)
         elseif action=="repair" then valid=valid and target and target.alive and target.team==u.team and target~=u and target.unit_type~="mothership" and target.hp<target.max_hp and (u.unit_type=="repair" or u.unit_type=="mothership")
         elseif action~="move" then valid=false end
         if valid then
+            local had_follow=u.follow_target
             u.attack_target,u.follow_target,u.repair_target,u.target_pos,u.attack_move=nil,nil,nil,nil,nil
+            if had_follow and action~="follow" then game:report_event(u,"formation_follow_end","") end
             u.burst_queue={}
             u.route=nil
             u.manual_order=true
             u.state_timer=0
+            -- 无目标的攻击指令是攻击移动，指示器按移动显示蓝色。
+            u.command_target={kind=(action=="attack" and not target) and "move" or action,target=target,x=x,y=y}
+            u.camera_target={kind=u.command_target.kind,target=target,x=x,y=y}
             if action=="move" or (action=="attack" and not target) then
                 local dx=((i-1)%cols-(cols-1)/2)*spacing
                 local dy=(math.floor((i-1)/cols)-(math.ceil(#units/cols)-1)/2)*spacing
@@ -23,7 +28,9 @@ function Orders.issue(game,units,action,target,x,y)
                 u.state="moving"
                 if action=="attack" then u.attack_move={x+dx,y+dy} end
             elseif action=="attack" then u.attack_target=target; u.state="attacking"
-            elseif action=="follow" then u.follow_target=target; u.state="following"
+            elseif action=="follow" then
+                u.follow_target=target; u.state="following"; u.follow_report_time=game.level_time
+                game:report_event(u,"formation_follow_start","")
             elseif action=="repair" then u.repair_target=target; u.state="repairing" end
             accepted=accepted+1
         end

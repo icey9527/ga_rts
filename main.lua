@@ -23,6 +23,12 @@ local Deployment=require("ui.deployment")
 local Mission=require("systems.mission_script")
 local Simulation=require("systems.simulation")
 local Registry=require("systems.pack_registry")
+local TacticalArrows=require("ui.tactical_arrows")
+local CommandController=require("ui.command_controller")
+local Input=require("core.input")
+local SelectionBox=require("ui.selection_box")
+local BattleView=require("ui.battle_view")
+local Score=require("systems.score")
 
 local game
 local camera
@@ -57,7 +63,7 @@ local drag_cam_x, drag_cam_y = 0, 0
 local command_mode = "normal"
 local command_action
 local command_hover_target
-local command_feedbacks = {}
+local command_controller=CommandController.new()
 local pending_command_units = {}
 local game_state = "menu"
 local command_pause_before = nil
@@ -74,66 +80,11 @@ local function restore_command_pause()
     end
 end
 
-local function get_units_center()
-    local ux, uy, count = 0, 0, 0
-    for _, u in ipairs(game.units) do
-        if u.alive and u.state ~= "dead" then
-            ux = ux + u.x
-            uy = uy + u.y
-            count = count + 1
-        end
-    end
-    if count > 0 then return ux / count, uy / count end
-    return 600, 500
-end
+local function load_high_scores() high_scores=Score.load(TBL) end
 
-local function load_high_scores()
-    high_scores = {}
-    local data = TBL.parse_file("high_scores.tbl")
-    if not data then return end
+local function save_high_score() Score.save_high(game,high_scores,current_level_name,TBL) end
 
-    local scores = data.scores or data
-    for key, value in pairs(scores) do
-        if type(value) == "number" then
-            high_scores[key] = value
-        end
-    end
-end
-
-local function save_high_score()
-    if current_level_name == "" then return end
-    if game.score <= (high_scores[current_level_name] or 0) then return end
-
-    high_scores[current_level_name] = game.score
-    love.filesystem.write("high_scores.tbl", TBL.serialize({scores = high_scores}))
-end
-
-local function calc_score()
-    local sc = settings.score or {}
-    local base = sc.base_victory or 1000
-    local time_target = sc.time_target or 300
-    local time_bonus_max = sc.time_bonus_max or 500
-    local time_bonus = 0
-
-    if game.level_time < time_target then
-        time_bonus = math.floor(time_bonus_max * (1 - game.level_time / time_target))
-    end
-
-    local survival = #game:get_units_by_team(game.player_team)
-    local survival_bonus = survival * (sc.unit_survival or 100)
-    local enemies_left = #game:get_enemy_units(game.player_team)
-    local enemy_bonus = math.max(0, 10 - enemies_left) * (sc.enemy_defeat or 50)
-    local mothership_bonus = game:get_mothership(game.player_team) and (sc.mothership_survival or 500) or 0
-
-    game.score = base + time_bonus + survival_bonus + enemy_bonus + mothership_bonus
-    game.score_breakdown = {
-        ["胜利基础"] = base,
-        ["时间奖励"] = time_bonus,
-        ["单位存活"] = survival_bonus,
-        ["敌军击破"] = enemy_bonus,
-        ["母舰存活"] = mothership_bonus,
-    }
-end
+local function calc_score() Score.calculate(game,settings) end
 
 local function rebuild_menu()
     if game then game.menu_confirm = nil end
@@ -162,7 +113,7 @@ local function reset_input_state()
     command_mode = "normal"
     command_action = nil
     command_hover_target = nil
-    command_feedbacks = {}
+    command_controller:reset()
     pending_command_units = {}
     selection_start = nil
     selection_rect = nil
@@ -189,7 +140,7 @@ local function start_level(index)
     Mission.start(game,level_files[index])
     Advisor.start(game)
     local ms=game:get_mothership(game.player_team)
-    local cx,cy=get_units_center()
+    local cx,cy=game:get_units_center()
     if ms then cx,cy=ms.x,ms.y end
     camera:focus_on(cx, cy)
     camera.zoom = 0.8
@@ -234,7 +185,7 @@ function love.load(args)
     local sw = settings.screen and settings.screen.width or 1280
     local sh = settings.screen and settings.screen.height or 800
     love.window.setMode(sw, sh, {resizable = true, minwidth = 960, minheight = 600, vsync = 1, msaa = 4})
-    love.window.setTitle("Deep Space Command")
+    love.window.setTitle("Deep Space")
 
     level_files = LevelManager.scan_levels()
     load_high_scores()
@@ -313,7 +264,7 @@ function love.load(args)
             _G.VERIFY_NAME="verification-tutorial-noah.png"
         end
         if arg=="--radio" then
-            command_feedbacks={}
+            command_controller:reset()
             local units=game:get_units_by_team(game.player_team)
             game.reports={}
             for i=2,4 do
@@ -503,11 +454,7 @@ function love.update(dt)
     Advisor.update(game,dt)
     if not game:is_paused() then Cinema.update(game,dt) end
 
-    for i = #command_feedbacks, 1, -1 do
-        local f = command_feedbacks[i]
-        f.life = f.life - dt
-        if f.life <= 0 then table.remove(command_feedbacks, i) end
-    end
+    command_controller:update(dt)
 
 
     game:update(dt*(game.skill_slow and game.skill_slow.scale or 1),dt)
@@ -534,90 +481,19 @@ local function draw_terrain()
     end
 end
 
-local function draw_projectiles()
-    for _, p in ipairs(game.projectiles) do
-        if p.draw then p:draw() end
-    end
-end
-
-local function draw_effects()
-    for _, e in ipairs(game.effects) do
-        if e.draw then e:draw() end
-    end
-end
-
 local function draw_selection_rect()
-    if not selection_start or not selection_rect then return end
-
-    local r = selection_rect
-    love.graphics.setColor(0.2, 0.8, 0.2, 0.25)
-    love.graphics.rectangle("fill", r.x, r.y, r.w, r.h)
-    love.graphics.setColor(0.3, 1, 0.3, 0.6)
-    love.graphics.rectangle("line", r.x, r.y, r.w, r.h)
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
-local function command_color(action, target)
-    if target then
-        if target.team ~= game.player_team then return 1.0, 0.16, 0.12, 0.92 end
-        return 0.18, 1.0, 0.35, 0.92
-    end
-    if action == "move" then return 0.25, 0.65, 1.0, 0.82 end
-    if action == "attack" then return 1.0, 0.22, 0.14, 0.72 end
-    if action == "repair" or action == "follow" then return 0.20, 1.0, 0.36, 0.72 end
-    return 1, 1, 1, 0.75
-end
-
-local function draw_arrow_screen(x1, y1, x2, y2, r, g, b, a, width)
-    local dx, dy = x2 - x1, y2 - y1
-    local len = math.sqrt(dx * dx + dy * dy)
-    if len < 12 then return end
-    dx, dy = dx / len, dy / len
-
-    love.graphics.setColor(r, g, b, a)
-    love.graphics.setLineWidth(width or 3)
-    love.graphics.line(x1, y1, x2, y2)
-
-    local head = math.min(26, len * 0.22)
-    local spread = 0.55
-    local lx = x2 - head * (dx * math.cos(spread) - dy * math.sin(spread))
-    local ly = y2 - head * (dy * math.cos(spread) + dx * math.sin(spread))
-    local rx = x2 - head * (dx * math.cos(-spread) - dy * math.sin(-spread))
-    local ry = y2 - head * (dy * math.cos(-spread) + dx * math.sin(-spread))
-    love.graphics.line(x2, y2, lx, ly)
-    love.graphics.line(x2, y2, rx, ry)
-    love.graphics.setLineWidth(1)
-    love.graphics.setColor(1, 1, 1, 1)
+    if selection_start and selection_rect then SelectionBox.draw(selection_rect) end
 end
 
 local function screen_to_extended_world(mx, my)
-    local w, h = love.graphics.getWidth(), love.graphics.getHeight()
-    local ex = math.max(0, math.min(w, mx))
-    local ey = math.max(0, math.min(h, my))
-    return camera:screen_to_world(ex, ey)
+    return Input.screen_to_extended_world(camera,mx,my)
 end
 
 local function draw_command_indicators()
-    for _, f in ipairs(command_feedbacks) do
-        local a = math.max(0, f.life / f.duration)
-        local sx, sy = camera:world_to_screen(f.x1, f.y1)
-        local ex, ey = camera:world_to_screen(f.x2, f.y2)
-        draw_arrow_screen(sx, sy, ex, ey, f.r, f.g, f.b, a * 0.72, 3)
-    end
     local tracked=camera.follow_target
-    if tracked and tracked.alive then
-        local action,target
-        if tracked.attack_target then action,target="attack",tracked.attack_target
-        elseif tracked.repair_target then action,target="repair",tracked.repair_target
-        elseif tracked.follow_target then action,target="follow",tracked.follow_target
-        elseif tracked.target_pos then action,target="move",{x=tracked.target_pos[1],y=tracked.target_pos[2]} end
-        if target then
-            local sx,sy=camera:world_to_screen(tracked.x,tracked.y-(tracked.z or 0)*0.22)
-            local ex,ey=camera:world_to_screen(target.x,target.y)
-            local ar,ag,ab=command_color(action,action=="move" and nil or target)
-            draw_arrow_screen(sx,sy,ex,ey,ar,ag,ab,0.80,3)
-        end
-    end
+    if tracked then TacticalArrows.draw_target(game,camera,tracked) end
+    TacticalArrows.draw_feedback(camera,command_controller.feedbacks)
+    
 
 
     if command_mode ~= "targeting" or #pending_command_units == 0 then return end
@@ -625,38 +501,7 @@ local function draw_command_indicators()
     local mx, my = love.mouse.getPosition()
     local wx, wy = screen_to_extended_world(mx, my)
     command_hover_target = game:get_unit_at(wx, wy, nil, camera.zoom)
-    local r, g, b, a = command_color(command_action, command_hover_target)
-
-    for _, u in ipairs(pending_command_units) do
-        if u.alive and u.state ~= "dead" then
-            local sx, sy = camera:world_to_screen(u.x, u.y - (u.z or 0) * 0.22)
-            draw_arrow_screen(sx, sy, math.max(0, math.min(love.graphics.getWidth(), mx)), math.max(0, math.min(love.graphics.getHeight(), my)), r, g, b, a, 3)
-        end
-    end
-
-    love.graphics.setColor(r, g, b, a)
-    if command_hover_target then
-        love.graphics.circle("line", mx, my, 18)
-        love.graphics.circle("line", mx, my, 9)
-    else
-        love.graphics.circle("line", mx, my, 10)
-        love.graphics.line(mx - 8, my, mx + 8, my)
-        love.graphics.line(mx, my - 8, mx, my + 8)
-    end
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
-local function draw_units()
-    local visible = {}
-    for _, u in ipairs(game.units) do visible[#visible + 1] = u end
-    table.sort(visible, function(a, b)
-        return ((a.y or 0) + (a.z or 0) * 0.2) < ((b.y or 0) + (b.z or 0) * 0.2)
-    end)
-    for _, u in ipairs(visible) do
-        if u.alive and u.state ~= "dead" then
-            ShipRenderer.draw(u, game.player_team)
-        end
-    end
+    TacticalArrows.draw_targeting(game,camera,pending_command_units,command_action,command_hover_target)
 end
 
 local function draw_playing()
@@ -669,9 +514,9 @@ local function draw_playing()
     SpaceScene.draw_world_layers(game)
     draw_terrain()
     require("systems.minerals").draw(game)
-    draw_units()
-    draw_projectiles()
-    draw_effects()
+    BattleView.draw_units(game,ShipRenderer)
+    BattleView.draw_projectiles(game)
+    BattleView.draw_effects(game)
     view:reset()
     love.graphics.pop()
     Markers.draw(game,view)
@@ -722,6 +567,15 @@ function love.draw()
     elseif game_state == "playing" then
         draw_playing()
     end
+    local derr=require("ui.pilots").dialogue_errors()
+    if #derr>0 then
+        local w,h=love.graphics.getWidth(),love.graphics.getHeight()
+        love.graphics.setColor(0.12,0.02,0.02,0.94);love.graphics.rectangle("fill",24,24,w-48,math.min(150,38+#derr*22),8,8)
+        love.graphics.setColor(1,0.35,0.3,1);love.graphics.setFont(require("core.fonts").get(16));love.graphics.print("对白脚本错误：未回退到默认台词",40,38)
+        love.graphics.setColor(1,0.82,0.78,1)
+        for i=1,math.min(4,#derr) do love.graphics.print(derr[i],40,62+i*20) end
+        love.graphics.setColor(1,1,1,1)
+    end
     if _G.VERIFY_CAPTURE then
         _G.VERIFY_CAPTURE = _G.VERIFY_CAPTURE - 1
         if _G.VERIFY_CAPTURE == 0 then
@@ -748,27 +602,22 @@ function hide_all_menus()
 end
 
 function start_targeting(action)
-    command_mode = "targeting"
-    command_action = action
+    pending_command_units=command_controller:begin(camera,game.selected_units,action)
+    command_mode = command_controller.mode
+    command_action = command_controller.action
     command_hover_target = nil
-    pending_command_units = {}
-    for _, u in ipairs(game.selected_units) do
-        if u.alive and u.state ~= "dead" then table.insert(pending_command_units, u) end
-    end
     pause_for_command()
-    camera:stop_follow()
-    camera:enable_edge_scroll(true)
     context_menu:hide()
     global_menu:hide()
 end
 
 function cancel_command()
-    command_mode = "normal"
-    command_action = nil
+    command_controller:cancel(camera)
+    command_mode = command_controller.mode
+    command_action = command_controller.action
     command_hover_target = nil
-    pending_command_units = {}
+    pending_command_units = command_controller.pending
     restore_command_pause()
-    camera:enable_edge_scroll(false)
     context_menu:hide()
     global_menu:hide()
 end
@@ -821,15 +670,7 @@ local function command_defense(units)
             u.attack_target = nil
             u.target_pos = {tx, ty}
             u.state = "moving"
-            table.insert(command_feedbacks, {
-                x1 = u.x,
-                y1 = u.y - (u.z or 0) * 0.22,
-                x2 = tx,
-                y2 = ty,
-                r = 0.20, g = 1.0, b = 0.36,
-                life = 0.9,
-                duration = 0.9,
-            })
+            command_controller:add_feedback(u,tx,ty,0.20,1.0,0.36)
         end
     end
 end
@@ -915,6 +756,8 @@ function love.mousepressed(mx, my, button)
                 camera:set_follow(clicked)
             end
         else
+            -- 点击空白同时取消敌方查看目标，避免敌方 inspected_unit 残留在面板和镜头中。
+            game.inspected_unit = nil
             selection_start = {mx, my}
             game:clear_selection()
             camera:stop_follow()
@@ -955,6 +798,8 @@ function love.mousepressed(mx, my, button)
             return
         end
 
+        -- 右键空白也退出敌方查看状态；上下文菜单仍按原流程打开。
+        game.inspected_unit = nil
         show_context_menu(mx, my)
     elseif button == 3 then
         camera:stop_follow()
@@ -1184,36 +1029,9 @@ function execute_global_command(action)
 end
 
 function execute_targeted_command(mx, my, forced_target)
-    local wx, wy = screen_to_extended_world(mx, my)
-    local target = forced_target or Markers.pick(game,camera,mx,my) or game:get_unit_at(wx, wy, nil, camera.zoom)
-    if command_action=="skill_target" then
-        local success=false
-        for _,u in ipairs(pending_command_units) do
-            if target and target.alive and target.team~=u.team and not u.skill_pending then
-                u.skill_target=target
-                if u:use_skill(game) then success=true else u.skill_target=nil end
-            end
-        end
-        if success then cancel_command() end
-        return
-    end
-    if command_action=="repair_tool" then
-        local success=false
-        for _,u in ipairs(pending_command_units) do
-            if u.unit_type=="repair" and not u.skill_pending and target and target~=u and target.team==u.team then
-                u.repair_target=target; u.skill_data={type="repair_tool",range=600}
-                success=u:use_skill(game) or success
-            end
-        end
-        if success then cancel_command() end
-        return
-    end
-    if Orders.issue(game,pending_command_units,command_action,target,wx,wy) == 0 then return end
-    local r,g,b=command_color(command_action,target)
-    for _,u in ipairs(pending_command_units) do
-        table.insert(command_feedbacks,{x1=u.x,y1=u.y-(u.z or 0)*0.22,x2=wx,y2=wy,r=r,g=g,b=b,life=0.9,duration=0.9})
-    end
-    cancel_command()
+    command_controller:execute(game,camera,command_action,pending_command_units,mx,my,forced_target,
+        function(u,x,y,r,g,b) command_controller:add_feedback(u,x,y,r,g,b) end,
+        cancel_command)
 end
 
 function direct_attack(enemy)

@@ -49,6 +49,46 @@ return {
 - `ready`：必杀技充能完成
 - `skill`：释放必杀技
 - `lost`：机体被击毁
+- `camera_follow_start`：镜头切换到该机体时触发
+- `camera_follow_continue`：镜头持续跟随时按冷却播报（不会每帧触发）
+- `camera_follow_end`：镜头停止跟随或切换到另一台机体时触发
+- `formation_follow_start` / `formation_follow_continue` / `formation_follow_end`：机体跟随命令的三个事件
+
+发言间隔配置在 `config/comms.lua`：`report_interval` 是同一机体连续两句通讯的最短间隔，`follow_continue_interval` 控制跟随持续播报的间隔，`follow_priority_window` 控制跟随角色抢话时的短暂优先窗口。优先级只影响窗口内的并发播报，不会长期压制敌方；跟随结束后立即回收优先状态。
+
+跟随台词兼容两种位置：旧格式可写在 `friendly.follow` / `friendly.follow_reply`；新的 `follow_start`、`follow_continue`、`follow_end` 可以直接写在对白表顶层。读取器会优先读取 `friendly` 下的同名字段，再读取顶层字段。
+
+两类跟随完全不同：`camera_follow_*` 是玩家主视角锁定机体时，由镜头绑定的机体说话；`formation_follow_*` 是一台机体执行跟随另一台机体的命令，由执行命令的机体说话。镜头跟随对白不读取 `follow_target`，机体跟随对白也不会因为玩家切换镜头而触发。所有事件都使用运行时对象，不使用上一次指令缓存。
+
+## 两套跟随事件示例
+
+下面的示例可以直接写进角色的 `dialogue.lua`。每个事件都只描述一种明确场景：
+
+```lua
+return {
+  -- 玩家把镜头切到这台机体后，这台机体说话。
+  camera_follow_start = {"镜头切过来了？我会保持航向。"},
+
+  -- 玩家持续看着这台机体一段时间后，这台机体偶尔说话。
+  camera_follow_continue = {"还在观察吗？前方航路没有异常。"},
+
+  -- 玩家停止镜头跟随或切换到别的机体后，这台机体说话。
+  camera_follow_end = {"镜头移开了，我继续执行当前任务。"},
+
+  -- 这台机体收到“跟随另一台我方机体”的命令后说话。
+  formation_follow_start = {"收到跟随命令，我跟在你的右侧。"},
+
+  -- 这台机体实际跟着另一台机体飞行时，按冷却偶尔说话。
+  formation_follow_continue = {"编队间距正常，继续保持。"},
+
+  -- 被跟随目标死亡、命令取消或改接其他命令后，这台机体说话。
+  formation_follow_end = {"跟随结束，准备接收新的指令。"},
+}
+```
+
+注意：`camera_follow_*` 的“跟随对象”是玩家当前观看的机体；`formation_follow_*` 的“跟随对象”才是运行时字段 `unit.follow_target` 指向的另一台机体。两者不能互换，也不要用 `follow_target` 来判断镜头是否正在跟随。
+
+当前拆分边界：`core/` 放游戏状态、镜头和输入基础；`ui/` 放界面、选择、指令和战术箭头；`systems/` 放订单、顾问和任务流程；`entities/` 放单位运行时行为；`battle/ai/` 放 AI 入口及后续 AI 策略；`config/` 放可调参数。迁移继续按完整功能块进行，避免只移动文件而改变调用行为。
 
 低血量和低能量由系统按冷却自动触发，分别使用 `hit` 和 `energy`。建议驾驶员台词使用明确动作，例如“装甲告急，请求返航补给”或“能源不足，申请回去补给”；系统会在可返航时自动执行。采集站没有驾驶员，不触发这些台词，也不接受普通战斗指挥。
 

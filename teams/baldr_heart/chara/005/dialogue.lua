@@ -57,6 +57,15 @@ return {
     },
 
   },
+    follow_start = {
+      "收到，我跟上！",
+    },
+    follow_continue = {
+      "跟着呢！这个位置如何？",
+    },
+    follow_end = {
+      "跟到这儿了。接下来自己走！",
+    },
   enemy = {
     attack = {
       "别怪我不客气了啊！",

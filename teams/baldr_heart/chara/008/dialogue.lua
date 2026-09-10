@@ -56,6 +56,15 @@ return {
     },
 
   },
+    follow_start = {
+      "……嗯，跟着。",
+    },
+    follow_continue = {
+      "……还在。",
+    },
+    follow_end = {
+      "……到这儿了。",
+    },
   enemy = {
     attack = {
       "别怪我下手重。",

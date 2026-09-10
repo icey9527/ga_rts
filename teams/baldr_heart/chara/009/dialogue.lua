@@ -56,6 +56,15 @@ return {
     },
 
   },
+    follow_start = {
+      "跟着本大爷？行，准了。",
+    },
+    follow_continue = {
+      "还在跟着呢，别催。",
+    },
+    follow_end = {
+      "跟到这儿，够了。",
+    },
   enemy = {
     attack = {
       "让开，挡路者死！",

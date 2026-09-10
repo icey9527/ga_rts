@@ -57,6 +57,15 @@ return {
 
   },
 
+    follow_start = {
+      "枣，随行。",
+    },
+    follow_continue = {
+      "随行中。",
+    },
+    follow_end = {
+      "随行至此。",
+    },
   enemy = {
     attack = {
       "目标进入射程。尔等，接招。",

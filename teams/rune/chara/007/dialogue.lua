@@ -60,6 +60,15 @@ return {
 
   },
 
+    follow_start = {
+      "罗塞尔，护航就位。",
+    },
+    follow_continue = {
+      "护航持续，间距正常。",
+    },
+    follow_end = {
+      "护航至这里，接下来自主机动。",
+    },
   enemy = {
     attack = {
       "目标进入射程。操纵权在我，开始压制。",

@@ -60,6 +60,15 @@ return {
 
   },
 
+    follow_start = {
+      "戏法大师，护航开始。",
+    },
+    follow_continue = {
+      "护航持续中。还顺利。",
+    },
+    follow_end = {
+      "护航到此为止。接下来交给我。",
+    },
   enemy = {
     attack = {
       "戏法大师，表演开始。",

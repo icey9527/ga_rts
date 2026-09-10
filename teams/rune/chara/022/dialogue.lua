@@ -70,6 +70,15 @@ return {
 
   },
 
+    follow_start = {
+      "僚机护航，展开。",
+    },
+    follow_continue = {
+      "护航持续，间距正常。",
+    },
+    follow_end = {
+      "护航结束，归队。",
+    },
   enemy = {
     attack = {
       "目标进入射程。……开始压制吧。",

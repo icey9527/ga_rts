@@ -57,6 +57,15 @@ return {
 
   },
 
+    follow_start = {
+      "收到，护卫开始。",
+    },
+    follow_continue = {
+      "护卫持续中，队形稳定。",
+    },
+    follow_end = {
+      "护卫结束。各机归位。",
+    },
   enemy = {
     attack = {
       "目标进入射程。各机依令，开火。",

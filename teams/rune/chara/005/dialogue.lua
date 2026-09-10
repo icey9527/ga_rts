@@ -56,6 +56,15 @@ return {
 
   },
 
+    follow_start = {
+      "跟上啦——别开太慢！",
+    },
+    follow_continue = {
+      "还跟着呢，放心！",
+    },
+    follow_end = {
+      "跟到这儿，刚好！",
+    },
   enemy = {
     attack = {
       "进入射程啦——这波猎物不错！",

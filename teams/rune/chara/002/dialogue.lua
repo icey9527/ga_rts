@@ -57,6 +57,15 @@ return {
 
   },
 
+    follow_start = {
+      "术式护航，展开。",
+    },
+    follow_continue = {
+      "还在跟着……咪莫莱特也是。",
+    },
+    follow_end = {
+      "跟到这里了。",
+    },
   enemy = {
     attack = {
       "术式，展开。……来吧，看看谁先抓住破绽。",

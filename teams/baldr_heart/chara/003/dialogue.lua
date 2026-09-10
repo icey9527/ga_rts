@@ -56,6 +56,15 @@ return {
     },
 
   },
+    follow_start = {
+      "嗯，我跟着你。",
+    },
+    follow_continue = {
+      "跟上了。请不要勉强。",
+    },
+    follow_end = {
+      "跟随结束。接下来请多保重。",
+    },
   enemy = {
     attack = {
       "既已为敌——便不留情了。",

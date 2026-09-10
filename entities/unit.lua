@@ -86,8 +86,7 @@ function Unit.new(x, y, team, cfg)
         bank = 0,
     }
     setmetatable(u, {__index = Unit})
-    local path="units/"..u.unit_type.."/logic.lua"
-    if love.filesystem.getInfo(path) then u.behavior=require("units."..u.unit_type..".logic") end
+    u.behavior=require("battle.unit.type_loader").load(u.unit_type)
     return u
 end
 
@@ -436,9 +435,19 @@ end
 
 function Unit:_state_following(dt, game)
     if not self.follow_target or not self.follow_target.alive then
+        if self.follow_target then
+            game:report_event(self,"formation_follow_end","")
+        end
         self.follow_target = nil
         self.state = "idle"
         return
+    end
+
+    local CommsConfig=require("config.comms")
+    self.follow_report_time=self.follow_report_time or game.level_time
+    if game.level_time-self.follow_report_time >= (CommsConfig.formation_follow_continue_interval or 20) then
+        game:report_event(self,"formation_follow_continue","")
+        self.follow_report_time=game.level_time
     end
 
     local dist = self:distance_to(self.follow_target)

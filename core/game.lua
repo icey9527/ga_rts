@@ -57,11 +57,27 @@ function Game:add_unit(unit)
     table.insert(self.units, unit)
 end
 
+function Game:get_units_center()
+    local x,y,count=0,0,0
+    for _,u in ipairs(self.units) do
+        if u.alive and u.state~="dead" then x=x+u.x; y=y+u.y; count=count+1 end
+    end
+    if count>0 then return x/count,y/count end
+    return 600,500
+end
+
 function Game:report_event(unit,kind,text)
     if not unit then return end
     -- 采集站是无人设施，不显示驾驶员通讯或战斗播报。
     if unit.unit_type == "collector" then return end
     local enemy=unit.team~=self.player_team
+    local is_follow=(kind=="camera_follow_start" or kind=="camera_follow_continue" or kind=="camera_follow_end")
+    local priority=is_follow and 3 or (enemy and 1 or 2)
+    local CommsConfig=require("config.comms")
+    local last_priority=self.report_priority or 0
+    local last_priority_time=self.report_priority_time or -100
+    if self.level_time-last_priority_time < (CommsConfig.follow_priority_window or 0.40)
+       and priority < last_priority then return end
     if kind=="lost" and not unit.loss_recorded then
         unit.loss_recorded=true
         if not enemy then self.losses=(self.losses or 0)+1 end
@@ -71,7 +87,7 @@ function Game:report_event(unit,kind,text)
     local last = unit.report_times[kind] or -100
     -- 同一角色所有事件共用最小发言间隔，避免受击/充能/释放在同一帧连播三句。
     local global_last = unit.report_global_last or -100
-    if self.level_time - global_last < 0.5 then return end
+    if self.level_time - global_last < (CommsConfig.report_interval or 0.30) then return end
     local urgent = kind == "lost" or kind == "failed"
     if self.level_time-last < (enemy and 14 or (urgent and 3 or 10)) then return end
     unit.report_times[kind] = self.level_time
@@ -81,10 +97,16 @@ function Game:report_event(unit,kind,text)
     local line=Pilots.line(unit,kind,text)
     print("DBG REP",unit.name,kind,line)
     if not line then return end
+    self.report_priority=priority
+    self.report_priority_time=self.level_time
     local report={unit=unit,kind=kind,text=line,life=5.5,age=0}
     if #self.reports>=3 then table.remove(self.reports,1) end
     self.reports[#self.reports+1]=report
     self.report=report
+    if kind=="follow_end" then
+        self.report_priority=0
+        self.report_priority_time=self.level_time
+    end
     if kind=="lost" then
         local opponents=self:get_enemy_units(unit.team)
         if opponents[1] then self:report_event(opponents[1],"praise", "命中判定成功。") end

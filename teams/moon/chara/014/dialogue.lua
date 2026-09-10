@@ -60,6 +60,15 @@ return {
 
   },
 
+    follow_start = {
+      "……收获者，跟上。",
+    },
+    follow_continue = {
+      "……还在跟着。",
+    },
+    follow_end = {
+      "……跟到这里了。",
+    },
   enemy = {
     attack = {
       "收获者，开始攻击。……请多保重。",

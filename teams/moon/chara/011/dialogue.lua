@@ -61,6 +61,15 @@ return {
 
   },
 
+    follow_start = {
+      "跟上就行……好吧，护航就护航！",
+    },
+    follow_continue = {
+      "还在跟着呢！别唠叨！",
+    },
+    follow_end = {
+      "跟到这里了。接下来看我的！",
+    },
   enemy = {
     attack = {
       "功夫战机，出击！让你们见识见识！",

@@ -114,7 +114,7 @@ function Verify.run()
     assert(not a:use_skill(battle) and a.sp==100,"no wasted skill")
     a.state="disabled"; a.skill_data={type="shield"}
     assert(not a:use_skill(battle),"disabled skill blocked")
-    local AI=require("systems.ai")
+    local AI=require("battle.ai.controller")
     local ms=Unit.new(0,0,1,{type="mothership"})
     battle:add_unit(ms)
     target.energy=1; target.state="supplying"

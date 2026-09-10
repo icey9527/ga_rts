@@ -69,6 +69,15 @@ return {
 
   },
 
+    follow_start = {
+      "阿尔茉护航，开始！",
+    },
+    follow_continue = {
+      "还在护航哦！",
+    },
+    follow_end = {
+      "护航结束！记录完毕！",
+    },
   enemy = {
     attack = {
       "敌、敌方是这边……！才、才不会手下留情呢！",

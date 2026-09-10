@@ -38,10 +38,21 @@ function Camera:world_to_screen(wx, wy)
 end
 
 function Camera:set_follow(unit)
+    if self.follow_target==unit then return end
+    if self.follow_target and self.follow_target.alive and self.follow_target.game then
+        self.follow_target.game:report_event(self.follow_target,"camera_follow_end","")
+    end
     self.follow_target = unit
+    if unit and unit.game then
+        unit.camera_follow_report_time=unit.game.level_time
+        unit.game:report_event(unit,"camera_follow_start","")
+    end
 end
 
 function Camera:stop_follow()
+    if self.follow_target and self.follow_target.alive and self.follow_target.game then
+        self.follow_target.game:report_event(self.follow_target,"camera_follow_end","")
+    end
     self.follow_target = nil
 end
 
@@ -66,6 +77,15 @@ end
 function Camera:update(dt)
     -- smooth follow
     if self.follow_target and self.follow_target.alive then
+        local cfg=require("config.comms")
+        local g=self.follow_target.game
+        if g then
+            local last=self.follow_target.camera_follow_report_time or g.level_time
+            if g.level_time-last >= (cfg.camera_follow_continue_interval or 20) then
+                g:report_event(self.follow_target,"camera_follow_continue","")
+                self.follow_target.camera_follow_report_time=g.level_time
+            end
+        end
         local tx = self.follow_target.x
         local ty = self.follow_target.y - (self.follow_target.z or 0)*0.22
         self.x = self.x + (tx - self.x) * math.min(self.follow_speed * dt, 1)

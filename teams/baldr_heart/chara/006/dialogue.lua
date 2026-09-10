@@ -56,6 +56,15 @@ return {
     },
 
   },
+    follow_start = {
+      "枫名，跟上！",
+    },
+    follow_continue = {
+      "还跟着哦！",
+    },
+    follow_end = {
+      "跟到这里，刚好！",
+    },
   enemy = {
     attack = {
       "你们这群家伙，接招！",

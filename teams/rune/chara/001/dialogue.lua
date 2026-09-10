@@ -57,6 +57,15 @@ return {
 
   },
 
+    follow_start = {
+      "跟、跟上姐姐大人……",
+    },
+    follow_continue = {
+      "还、还在跟着……",
+    },
+    follow_end = {
+      "跟到这里了……",
+    },
   enemy = {
     attack = {
       "目、目标进入射程……要上了哦。",

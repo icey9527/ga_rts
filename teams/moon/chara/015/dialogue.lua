@@ -58,6 +58,15 @@ return {
     },
 
   },
+    follow_start = {
+      "迅雷射手，护航开始。",
+    },
+    follow_continue = {
+      "护航持续中，一切正常。",
+    },
+    follow_end = {
+      "护航结束。接下来是主攻。",
+    },
   enemy = {
     attack = {
       "这边可不会站着让你打。",

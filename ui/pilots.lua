@@ -4,6 +4,7 @@ local Registry=require("systems.pack_registry")
 local images={}
 local chara_cache={}
 local dialogue_cache={}
+local dialogue_errors={}
 
 local DEFAULT_TEAM="default"
 local FACE_WANTED=({hit="0008",lost="0008",failed="0008",energy="0008",supplied="0002",return_battle="0001",repair_done="0002",attack="0001",skill="0001",idle="0002",praise="0002"})
@@ -213,8 +214,14 @@ local function load_team_dialogue(team,id)
     if love.filesystem.getInfo(path) then
         local source=love.filesystem.read(path)
         local chunk=source and loadstring(source)
-        local ok,data=pcall(chunk and chunk or function() return nil end)
-        if ok and type(data)=="table" then parsed=data end
+        if not chunk then
+            dialogue_errors[#dialogue_errors+1]="对白脚本读取失败："..path
+        else
+            local ok,data=pcall(chunk)
+            if not ok or type(data)~="table" then
+                dialogue_errors[#dialogue_errors+1]="对白脚本执行失败："..path.."\n"..tostring(data)
+            else parsed=data end
+        end
     end
     dialogue_cache[key]=parsed
     return parsed
@@ -244,16 +251,21 @@ function Pilots.line(unit,kind,fallback)
         local entry=normalize(list[(unit.dialogue_index.panel-1)%#list+1])
         return entry and entry.text~="" and entry.text or fallback
     end
-    if kind=="ready" or kind=="interaction" or kind=="follow" or kind=="follow_reply" then
+    if kind=="ready" or kind=="interaction" or kind=="follow" or kind=="follow_reply"
+       or kind=="follow_start" or kind=="follow_continue" or kind=="follow_end"
+       or kind:match("^camera_follow_") or kind:match("^formation_follow_") then
         if side=="enemy" then return nil end
-        local personal=dialogue and dialogue.friendly and dialogue.friendly[kind]
+        -- 旧角色对白把跟随台词放在 friendly 下；新格式的三个跟随事件
+        -- 放在顶层。两处都支持，避免迁移过程中整批改文件造成遗漏。
+        local personal=(dialogue and dialogue.friendly and dialogue.friendly[kind])
+            or (dialogue and dialogue[kind])
         if personal and #personal>0 then
             unit.dialogue_index=unit.dialogue_index or {}
             local i=(unit.dialogue_index[kind] or 0)+1;unit.dialogue_index[kind]=i
             local entry=normalize(personal[(i-1)%#personal+1])
             return entry and entry.text~="" and entry.text or nil
         end
-        return ({ready="特殊装备已就绪，等待指令。",interaction="航向又变了吗？请留一点时间完成机动。",follow="已经跟上。这段航路一起走吧。",follow_reply="收到，我会留出安全间距。"})[kind]
+        return ({ready="特殊装备已就绪，等待指令。",interaction="航向又变了吗？请留一点时间完成机动。",follow="已经跟上。这段航路一起走吧。",follow_reply="收到，我会留出安全间距。",follow_start="收到，开始跟随。",follow_continue="保持这个间距，继续前进。",follow_end="跟随结束，恢复自主行动。",camera_follow_start="镜头锁定，正在跟随。",camera_follow_continue="保持航向，继续观察。",camera_follow_end="镜头跟随结束。",formation_follow_start="收到跟随命令。",formation_follow_continue="保持编队间距。",formation_follow_end="跟随命令结束。"})[kind]
     end
     local list=dialogue and dialogue[side] and dialogue[side][kind]
     if not list and side=="friendly" and love.filesystem.getInfo("units/"..unit.unit_type.."/dialogue.lua") then
@@ -279,5 +291,9 @@ function Pilots.line(unit,kind,fallback)
         text=text:gsub("{commander}",name)
     end
     return text, entry and entry.face or ""
+end
+
+function Pilots.dialogue_errors()
+    return dialogue_errors
 end
 return Pilots

@@ -105,7 +105,7 @@ function LevelManager.load_level(filename, game)
     for _,wave in ipairs(game.pending_waves) do wave.x,wave.y=wave.x*scale,wave.y*scale end
     game.opening_grace=pacing.opening_grace
     game.map_scale=scale
-    local AI = require("systems.ai")
+    local AI = require("battle.ai.controller")
     local ai_cfg = data.ai or {}
     local difficulty = ai_cfg.difficulty or "normal"
     local personality = ai_cfg.personality or "balanced"

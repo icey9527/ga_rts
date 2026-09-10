@@ -71,6 +71,15 @@ return {
     ready = {
       "通讯系统就绪！随时可以出发！",
     },
+    follow_start = {
+      "可可护航，开始！",
+    },
+    follow_continue = {
+      "护航中，通讯正常！",
+    },
+    follow_end = {
+      "护航结束！",
+    },
   enemy = {
     attack = {
       "目标进入射程。各机准备——开始攻击！",
