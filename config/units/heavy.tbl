@@ -14,17 +14,20 @@ attack_direction = "front"
 projectile_count = 2
 
 [weapon.main]
+energy_cost = 4
 type = "artillery"
 range = 520
 damage = 58
+splash_radius = 90
 count = 2
 arc = 100
 direction = "front"
 
 [weapon.machine_gun]
+energy_cost = 1
 type = "ranged"
 range = 260
-damage = 7
+damage = 10
 cooldown = 0.3
 count = 2
 arc = 150
@@ -34,9 +37,7 @@ max_heat = 100
 cool_rate = 18
 burst_count = 1
 spread_angle = 0.24
-target_spread = 180
 projectile_speed = 230
-splash_radius = 90
 radius = 30
 sprite_color = {150, 150, 255}
 
@@ -44,3 +45,7 @@ sprite_color = {150, 150, 255}
 type = "shield"
 shield_amount = 320
 duration = 8
+
+[behavior]
+too_close = 240
+approach_boost = 1.1

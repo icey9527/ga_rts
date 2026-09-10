@@ -1,11 +1,11 @@
 -- Unit entity with state machine
 local Unit = {}
-local atan2 = math.atan2 or function(y, x) return math.atan(y, x) end
 local Targeting=require("battle.unit.targeting")
 local Weapons=require("battle.unit.weapons")
 local Combat=require("battle.unit.combat")
 local Movement=require("battle.unit.movement")
 local ProjectileCombat=require("battle.unit.projectile")
+local Commands=require("battle.commands")
 
 function Unit.new(x, y, team, cfg)
     local s = cfg.stats or cfg  -- accept both parsed TBL (with [stats]) and raw table
@@ -71,9 +71,10 @@ function Unit.new(x, y, team, cfg)
 
         -- timers
         attack_timer = 0,
+        retarget_timer = 0,
         burst_queue = {},
         -- 武器按机体类型配置；未配置时自动生成一门主炮，兼容现有单位表。
-        weapons = Weapons.normalize((#configured_weapons>0 and configured_weapons) or s.weapons, {id="main",range=s.attack_range or 150,damage=s.attack_damage or 10,cooldown=s.attack_cooldown or 1.0,count=s.projectile_count or 1,arc=s.attack_arc or 100,direction=s.attack_direction or "front"}),
+        weapons = Weapons.normalize((#configured_weapons>0 and configured_weapons) or s.weapons, {id="main",range=s.attack_range or 150,damage=s.attack_damage or 10,cooldown=s.attack_cooldown or 1.0,count=s.projectile_count or 1,arc=s.attack_arc or 100,direction=s.attack_direction or "front",energy_cost=s.attack_energy_cost}),
         state_timer = 0,
 
         -- SP / skills
@@ -116,9 +117,10 @@ function Unit:dist_to_pos(px, py)
     return math.sqrt(dx*dx + dy*dy)
 end
 
+-- 返回本次实际施加的伤害（护盾吸收后）。
+-- 承受伤害按 pacing.sp_per_damage_taken 折算 SP：重甲高受击单位自然更快充能。
 function Unit:take_damage(dmg,attacker)
-    if not self.alive then return end
-    dmg=dmg*(self.game and require("config.pacing").damage_multiplier or 1)
+    if not self.alive then return 0 end
     -- shield absorbs first
     if self.shield > 0 then
         local absorbed = math.min(dmg, self.shield)
@@ -126,12 +128,21 @@ function Unit:take_damage(dmg,attacker)
         dmg = dmg - absorbed
     end
     self.hp = self.hp - dmg
+    if dmg>0 then
+        local p=require("config.pacing")
+        self.sp=math.min(self.max_sp,(self.sp or 0)+dmg*p.sp_per_damage_taken)
+    end
     if dmg>0 and self.hp>0 and self.unit_type~="collector" and not self.objective_ship
        and Targeting.is_valid_enemy(self,attacker)
        and not Targeting.is_valid_enemy(self,self.attack_target) then
-        self.attack_target=attacker
         self.retarget_timer=0.45
-        if self.state=="idle" or self.state=="moving" then self.state="attacking" end
+        if self.game then
+            -- 受击反锁走命令仲裁：玩家命令（移动/返航/跟随）在位时不被抢锁。
+            Commands.issue(self.game,self,"attack",{target=attacker})
+        else
+            self.attack_target=attacker
+            if self.state=="idle" or self.state=="moving" then self.state="attacking" end
+        end
     end
     if self.game and self.game.tutorial_hold then self.hp=math.max(self.hp,1) end
     if dmg>0 then require("systems.audio").play("impact") end
@@ -141,6 +152,7 @@ function Unit:take_damage(dmg,attacker)
         self.alive = false
         self.state = "dead"
         if self.game then
+            self.game:invalidate_team_cache()
             require("systems.audio").play("destroyed")
             if self.team~=self.game.player_team and self.game.economy then
                 self.game.economy.credits=self.game.economy.credits+require("config.economy").bounty
@@ -151,6 +163,7 @@ function Unit:take_damage(dmg,attacker)
     elseif dmg > 0 and self.game then
         self.game:report_event(self,"hit",self.hp < self.max_hp*0.3 and "装甲严重受损，请求支援！" or "受到攻击，正在规避！")
     end
+    return dmg
 end
 
 function Unit:heal(amount)
@@ -202,7 +215,10 @@ function Unit:update(dt, game)
     end
     for _, k in ipairs(expired) do
         self.buffs[k] = nil
-        if k == "disable" then self.state = "idle" end
+        if k == "disable" then
+            self.state = "idle"
+            Commands.finish(self)
+        end
     end
     self:_recalc_stats()
 
@@ -223,10 +239,9 @@ function Unit:update(dt, game)
 
     -- state machine
     local old_x, old_y = self.x, self.y
-    self.combat_move_intent=nil
     self._movement_active=true;self._movement_used=false
     if self.behavior and self.state~="disabled" then self.behavior.update(self,dt,game) end
-    if not require("systems.special_attacks").update_dash(self,dt,game) then self:_update_state(dt, game) end
+    if not require("battle.skills.registry").update_dash(self,dt,game) then self:_update_state(dt, game) end
     self._movement_active=false
     if dt > 0 then
         self.vx, self.vy = (self.x-old_x)/dt, (self.y-old_y)/dt
@@ -259,8 +274,6 @@ function Unit:_update_flight_layer(dt)
         target = target + 18
     elseif self.state == "attacking" then
         target = target + 24
-    elseif self.state == "circle_strafing" then
-        target = target + 42 + math.sin((self.angle or 0) * 2) * 18
     elseif self.state == "returning" then
         target = target + 10
     elseif self.state == "supplying" or self.state == "repairing" then
@@ -286,7 +299,7 @@ function Unit:_player_auto(dt, game)
             local d=self:distance_to(ally)
             if ally~=self and ally.hp<ally.max_hp and d<math.max(self.repair_range*2,300) and d<dist then nearest,dist=ally,d end
         end
-        if nearest then self.repair_target=nearest; self.state="repairing" end
+        if nearest then Commands.issue(game,self,"repair",{target=nearest}) end
     end
     -- auto use skill when SP full
     if self.auto_skill and self.sp >= self.max_sp then self:use_skill(game) end
@@ -298,35 +311,30 @@ function Unit:_player_auto(dt, game)
             self.energy_warn_report = game.level_time
             game:report_event(self, "energy", "能量不足，准备返航补给。")
         end
-        self.supply_resume_target = self.attack_target
         local ms = self:find_mothership(game)
         if ms then
-            self.state = "returning"
+            Commands.issue(game,self,"return")
         end
     end
 
     -- very limited auto-engage when idle
     if self.state == "idle" and self.state_timer > 1.4 and self.unit_type ~= "repair" and self.unit_type~="collector" and self.energy > 5 then
-        local cfg = (_G.SETTINGS and _G.SETTINGS.gameplay) or {}
-        local range = self.manual_order and self.attack_range or math.min(cfg.fighter_auto_range or 1800,self.attack_range*1.4)
-        local enemy = self:find_nearest_enemy(game, range)
+        local auto_range = self.manual_order and self.attack_range
+            or math.min(require("config.gameplay").fighter_auto_range, self.attack_range*1.4)
+        local enemy = self:find_nearest_enemy(game, auto_range)
         if enemy then
-            self.attack_target = enemy
-            self.state = "attacking"
+            Commands.issue(game,self,"attack",{target=enemy})
         end
     end
 end
 
 function Unit:_update_state(dt, game)
-    if self.state~="attacking" and self.state~="circle_strafing" then self.combat_pass=nil end
     if self.state == "idle" then
         -- nothing
     elseif self.state == "moving" then
         self:_state_moving(dt, game)
     elseif self.state == "attacking" then
         self:_state_attacking(dt, game)
-    elseif self.state == "circle_strafing" then
-        self:_state_circle_strafing(dt, game)
     elseif self.state == "repairing" then
         self:_state_repairing(dt, game)
     elseif self.state == "following" then
@@ -338,8 +346,11 @@ function Unit:_update_state(dt, game)
     elseif self.state == "undocking" then
         if not self.target_pos or self:_move_towards(self.target_pos[1],self.target_pos[2],self.speed*dt,game) then
             self.state="idle";self.state_timer=0;self.target_pos=nil;self.route=nil
-            if self.supply_resume_target and self.supply_resume_target.alive then
-                self.attack_target=self.supply_resume_target; self.supply_resume_target=nil; self.state="attacking"
+            Commands.finish(self)
+            local resume=self.supply_resume_target
+            self.supply_resume_target=nil
+            if resume and resume.alive then
+                Commands.issue(game,self,"attack",{target=resume})
                 game:report_event(self,"return_battle","重返战场，继续攻击。")
             end
         end
@@ -362,6 +373,7 @@ function Unit:_state_moving(dt, game)
         self.target_pos = nil
         self.attack_move = nil
         self.state = "idle"
+        Commands.finish(self)
     end
 end
 
@@ -375,42 +387,17 @@ function Unit:_state_attacking(dt, game)
         end
         -- AI handled separately; player units go idle
         self.state = self.attack_move and "moving" or "idle"
-        if self.attack_move then self.target_pos={self.attack_move[1],self.attack_move[2]} end
+        if self.attack_move then self.target_pos={self.attack_move[1],self.attack_move[2]}
+        else Commands.finish(self) end
         return
     end
 
     local dist = self:distance_to(self.attack_target)
 
+    -- 机型战术脚本接管接敌航线；没有 fly 的机型（母舰/采集站等）走通用逼近。
     if self.behavior and self.behavior.fly and self.behavior.fly(self,dt,game) then return end
 
-    if self.combat_move_intent then
-        self._approach_speed_multiplier=nil
-        self:_move_towards(self.combat_move_intent.x,self.combat_move_intent.y,self.speed*dt,game)
-        self:_try_attack(game)
-        return
-    end
-
-    -- 高速机体在射程外主动加速接敌，进入射程后恢复正常航速。
-    local fast_types={light=true,scout=true}
-    if fast_types[self.unit_type] and dist>self.attack_range then
-        self._approach_speed_multiplier=1.35
-        self:_move_towards(self.attack_target.x,self.attack_target.y,self.speed*1.35*dt,game)
-        return
-    end
     self._approach_speed_multiplier=nil
-
-    -- 近中程战舰保持缠斗，不在射程内原地停死；远程炮舰和母舰继续保持阵位。
-    local strafe_types = {
-        scout=true, light=true,
-        heavy=true, gunship=true, bomber=true, tiger=true, carrier=true,
-        missile_frigate=true,
-    }
-    if strafe_types[self.unit_type] and dist <= self.attack_range + 120 then
-        self.orbit_angle=atan2(self.y-self.attack_target.y,self.x-self.attack_target.x)
-        self.state = "circle_strafing"
-        return
-    end
-
     if dist <= self.attack_range then
         Combat.aim(self,self.attack_target,dt)
         self:_try_attack(game)
@@ -419,74 +406,30 @@ function Unit:_state_attacking(dt, game)
     end
 end
 
-function Unit:_state_circle_strafing(dt, game)
-    if self.behavior and self.behavior.fly and self.behavior.fly(self,dt,game) then return end
-    if not self.attack_target or not self.attack_target.alive or self.attack_target.state == "dead" then
-        self.attack_target = nil
-        if self.retarget_timer<=0 then
-            local next_enemy=self:find_nearest_enemy(game,self.attack_range*1.5)
-            self.retarget_timer=0.45
-            if next_enemy then self.attack_target=next_enemy; self.state="attacking"; return end
-        end
-        self.state = self.attack_move and "moving" or "idle"
-        if self.attack_move then self.target_pos={self.attack_move[1],self.attack_move[2]} end
-        return
-    end
-
-    local dist = self:distance_to(self.attack_target)
-    local cfg = (_G.SETTINGS and _G.SETTINGS.circle_strafe) or {radius=100, speed=3}
-    local sr = math.min(cfg.radius or 100,self.attack_range*0.75)
-    if self.combat_orbit_radius then sr=math.min(self.combat_orbit_radius,self.attack_range*0.88) end
-    -- Small hysteresis keeps range-edge movement stable without orbiting out of firing range for seconds.
-    if dist > self.attack_range + math.max(80,self.attack_range*0.12) then
-        self.state = "attacking"
-        return
-    end
-
-    -- Anchor the steering point to the actual position: a free-running orbit point can outrun the ship.
-    self.orbit_angle = atan2(self.y-self.attack_target.y,self.x-self.attack_target.x) + math.min(0.5,math.max(0.18,self.speed/math.max(sr,1)*0.6))*self.circle_direction
-    local cx = self.attack_target.x + math.cos(self.orbit_angle) * sr
-    local cy = self.attack_target.y + math.sin(self.orbit_angle) * sr
-    -- Turn into a firing pass when a forward weapon is ready. Constant tangential
-    -- orbiting otherwise leaves the target outside the gun arc indefinitely.
-    local ready=false
-    for _,weapon in ipairs(self.weapons) do
-        if (weapon.cooldown_timer or 0)<=0.6 and Weapons.can_fire(weapon) then ready=true;break end
-    end
-    local pass=self.combat_pass
-    if pass and (pass.target~=self.attack_target or pass.until_time<=game.level_time) then pass=nil;self.combat_pass=nil end
-    if pass then cx,cy=pass.x,pass.y
-    elseif ready then cx,cy=self.attack_target.x,self.attack_target.y end
-    self:_move_towards(cx, cy, self.speed * dt, game)
-
-    if dist <= self.attack_range then
-        if self:_try_attack(game) and not pass then
-            local angle=self.angle+self.circle_direction*0.6
-            local length=math.max(90,math.min(240,self.speed*1.2))
-            self.combat_pass={target=self.attack_target,until_time=game.level_time+1.0,x=self.x+math.cos(angle)*length,y=self.y+math.sin(angle)*length}
-        end
-    end
-end
-
 function Unit:_state_repairing(dt, game)
     if not self.repair_target or not self.repair_target.alive or self.repair_target.unit_type=="mothership" then
         self.repair_target = nil
         self.state = "idle"
+        Commands.finish(self)
         return
     end
     if self.repair_target.hp >= self.repair_target.max_hp then
         self.repair_target = nil
         self.state = "idle"
+        Commands.finish(self)
         return
     end
 
     local dist = self:distance_to(self.repair_target)
     if dist <= self.repair_range then
         if self.energy > 0 then
+            -- 维修按实际修复量折算 SP（pacing.sp_per_repair）。
+            local healed=self.repair_target.max_hp-self.repair_target.hp
             self.repair_target:heal(self.repair_target.max_hp)
             self.energy = math.max(0, self.energy - 12)
+            self.sp=math.min(self.max_sp,(self.sp or 0)+healed*require("config.pacing").sp_per_repair)
             game:report_event(self,"repair_done","维修完成，目标机体可以继续作战。")
-            self.repair_target=nil;self.state="idle"
+            self.repair_target=nil;self.state="idle";Commands.finish(self)
         end
     else
         self:_move_towards(self.repair_target.x, self.repair_target.y, self.speed * dt, game)
@@ -500,6 +443,7 @@ function Unit:_state_following(dt, game)
         end
         self.follow_target = nil
         self.state = "idle"
+        Commands.finish(self)
         return
     end
 
@@ -537,8 +481,7 @@ function Unit:_state_returning(dt, game)
         return
     end
     local dist = self:distance_to(ms)
-    local cfg = (_G.SETTINGS and _G.SETTINGS.gameplay) or {}
-    local sr = cfg.supply_range or 100
+    local sr = require("config.gameplay").supply_range
     if dist <= sr then
         self.state = "supplying"
     else
@@ -552,8 +495,7 @@ function Unit:_state_supplying(dt, game)
         return
     end
     local ms = self:find_mothership(game)
-    local cfg = (_G.SETTINGS and _G.SETTINGS.gameplay) or {}
-    local sr = cfg.supply_range or 100
+    local sr = require("config.gameplay").supply_range
 
     if not ms or ms == self then
         self.state = "idle"
@@ -602,7 +544,7 @@ function Unit:use_skill(game)
 
     local Skill = require("systems.skill")
     if not Skill.can_execute(self,game) then return false end
-    require("systems.special_attacks").prepare(self)
+    require("battle.skills.registry").prepare(self)
     self.skill_pending=self.skill_data.windup or require("config.pacing").skill_windup
     game:add_effect(require("entities.effect").charge(self,self.skill_pending))
     -- 敌我双方都启动侧边必杀演出；样式与尺寸由 cinematic 按阵营区分。
@@ -616,14 +558,13 @@ end
 
 function Unit:_recalc_stats()
     self.speed = self.base_speed
-    self.attack_damage = self.base_attack_damage
     for _, b in pairs(self.buffs) do
         if b.type == "speed" then
             self.speed = self.speed * (b.multiplier or 1.5)
-        elseif b.type == "attack" then
-            self.attack_damage = math.floor(self.attack_damage * (b.multiplier or 1.5))
         end
     end
+    -- 攻击增益不再改写 unit.attack_damage：开火快照按 buffs.attack.multiplier
+    -- 显式乘入武器伤害（battle/unit/combat.lua），基础值保持稳定。
 end
 
 function Unit:apply_buff(btype, multiplier, duration)

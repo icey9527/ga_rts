@@ -55,6 +55,7 @@ function Game:add_unit(unit)
     require("systems.preferences").apply(unit)
     require("systems.economy").apply(self,unit)
     table.insert(self.units, unit)
+    self:invalidate_team_cache()
 end
 
 function Game:get_units_center()
@@ -129,43 +130,68 @@ function Game:add_environment(layer)
     table.insert(self.environment_layers, layer)
 end
 
-function Game:get_units_by_team(team)
-    local result = {}
+-- 队伍单位列表缓存：getter 返回共享表，调用方只读遍历，禁止 insert/remove/sort。
+-- 增援入队、单位死亡、reset 时失效；每帧全量索敌不再产生 O(N) 临时表。
+local EMPTY = {}
+
+local function rebuild_team_caches(self)
+    local by_team, friendly, mothership, enemies = {}, {}, {}, {}
+    local teams = {}
     for _, u in ipairs(self.units) do
-        if u.team == team and u.alive and u.state ~= "dead" then
-            table.insert(result, u)
+        if u.alive and u.state ~= "dead" then
+            local team = u.team
+            if not by_team[team] then
+                by_team[team] = {}
+                friendly[team] = {}
+                teams[#teams + 1] = team
+            end
+            table.insert(by_team[team], u)
+            if u.unit_type ~= "mothership" and u.unit_type ~= "collector" then
+                table.insert(friendly[team], u)
+            end
+            if u.unit_type == "mothership" and not mothership[team] then
+                mothership[team] = u
+            end
         end
     end
-    return result
+    for _, team in ipairs(teams) do
+        for _, other in ipairs(teams) do
+            if other ~= team then
+                for _, u in ipairs(by_team[other]) do enemies[team] = enemies[team] or {}; enemies[team][#enemies[team] + 1] = u end
+            end
+        end
+    end
+    self._team_lists = by_team
+    self._friendly_lists = friendly
+    self._motherships = mothership
+    self._enemy_lists = enemies
+end
+
+function Game:invalidate_team_cache()
+    self._team_lists = nil
+    self._friendly_lists = nil
+    self._motherships = nil
+    self._enemy_lists = nil
+end
+
+function Game:get_units_by_team(team)
+    if not self._team_lists then rebuild_team_caches(self) end
+    return self._team_lists[team] or EMPTY
 end
 
 function Game:get_enemy_units(team)
-    local result = {}
-    for _, u in ipairs(self.units) do
-        if u.team ~= team and u.alive and u.state ~= "dead" then
-            table.insert(result, u)
-        end
-    end
-    return result
+    if not self._enemy_lists then rebuild_team_caches(self) end
+    return self._enemy_lists[team] or EMPTY
 end
 
 function Game:get_mothership(team)
-    for _, u in ipairs(self.units) do
-        if u.team == team and u.unit_type == "mothership" and u.alive and u.state ~= "dead" then
-            return u
-        end
-    end
-    return nil
+    if not self._motherships then rebuild_team_caches(self) end
+    return self._motherships[team]
 end
 
 function Game:get_all_friendly_units(team)
-    local result = {}
-    for _, u in ipairs(self.units) do
-        if u.team == team and u.unit_type ~= "mothership" and u.unit_type~="collector" and u.alive and u.state ~= "dead" then
-            table.insert(result, u)
-        end
-    end
-    return result
+    if not self._friendly_lists then rebuild_team_caches(self) end
+    return self._friendly_lists[team] or EMPTY
 end
 
 function Game:get_unit_at(x, y, radius, zoom)
@@ -233,7 +259,7 @@ function Game:update(dt,real_dt)
     self.level_time = self.level_time + dt
     require("systems.economy").update(self,dt)
     require("systems.mission_script").tick(self)
-    require("systems.special_attacks").update(self,dt)
+    require("battle.skills.registry").tick(self,dt)
     require("systems.objectives").update(self,dt)
 
     -- update units
@@ -380,6 +406,7 @@ function Game:reset()
     self.report = nil
     self.next_unit_id = 0
     self.units = {}
+    self:invalidate_team_cache()
     self.projectiles = {}
     self.effects = {}
     self.selected_units = {}

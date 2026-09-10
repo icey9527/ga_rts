@@ -1,5 +1,5 @@
--- 机体类型行为统一入口。
--- 迁移期间保留旧 units/<type>/logic.lua 的实现，调用方不再直接拼接 require 路径。
+-- 机体类型行为统一入口：只认 battle/unit/types/<type>.lua，不再回退旧模块。
+-- 新文件存在但加载失败或接口不合法时直接抛错，避免静默退回旧行为。
 local Loader = {}
 local cache = {}
 
@@ -14,7 +14,6 @@ function Loader.load(unit_type)
     if cache[unit_type] ~= nil then return cache[unit_type] or nil end
     assert(unit_type:match("^[%w_]+$"),"Invalid unit type: "..unit_type)
     local name="battle.unit.types."..unit_type
-    if not exists(name) then name="units."..unit_type..".logic" end
     if not exists(name) then cache[unit_type]=false;return nil end
     local ok,behavior=xpcall(function() return require(name) end,debug.traceback)
     if not ok then error("Unit behavior failed to load: "..name.."\n"..tostring(behavior),0) end

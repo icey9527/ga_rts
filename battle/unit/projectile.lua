@@ -20,14 +20,22 @@ function Projectile.spawn(unit,game,target,index,total,weapon)
     local angle_off=total>1 and (index-(total-1)/2)*(weapon.spread_angle or unit.spread_angle or 0.16) or 0
     local base=atan2(target.y-unit.y,target.x-unit.x)
     local dist=math.max(120,unit:distance_to(target));local pacing=require("config.pacing")
-    local flight=math.min(1.8,dist/math.max(1,speed))*pacing.lead_fraction
-    local spread=pacing.spread_pixels*(1-(unit.accuracy or 0.78))+(target.evasion or 0.12)*20
+    -- 慢速炮击弹用全量前置与更小散布：重火力的命中靠预测而非弹速，
+    -- 目标变向仍可规避，但匀速飞行不再无限戏耍重装单位。
+    local artillery=(kind=="artillery")
+    local lead_fraction=artillery and (pacing.artillery_lead_fraction or 1.0) or pacing.lead_fraction
+    local flight=math.min(1.8,dist/math.max(1,speed))*lead_fraction
+    local spread=(pacing.spread_pixels*(1-(unit.accuracy or 0.78))+(target.evasion or 0.12)*20)
+    if artillery then spread=spread*(pacing.artillery_spread_factor or 0.6) end
     local error_angle=math.random()*math.pi*2;local error_radius=math.random()*spread
     local tx=target.x+(target.vx or 0)*flight+math.cos(error_angle)*error_radius+math.cos(base+math.pi/2)*angle_off*(unit.target_spread or 120)
     local ty=target.y+(target.vy or 0)*flight+math.sin(error_angle)*error_radius+math.sin(base+math.pi/2)*angle_off*(unit.target_spread or 120)
     local dmg=math.max(1,math.floor((weapon.damage or unit.attack_damage)/math.max(1,total)))
     if kind=="beam" then
-        target:take_damage(dmg,unit)
+        local dealt=target:take_damage(dmg,unit)
+        if unit and dealt and dealt>0 then
+            unit.sp=math.min(unit.max_sp,unit.sp+dealt*require("config.pacing").sp_per_damage_dealt)
+        end
         game:add_effect(require("entities.effect").beam(unit.x,unit.y-(unit.z or 0)*0.22,target.x,target.y-(target.z or 0)*0.22))
     elseif kind=="missile" then
         game:add_projectile(P.missile(sx,sy,target,dmg,speed,unit.z or 0,visual,unit))

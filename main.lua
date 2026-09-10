@@ -127,6 +127,8 @@ function love.load(args)
 
     settings = TBL.parse_file("config/settings.tbl") or {}
     _G.SETTINGS = settings
+    -- 战斗玩法参数以 config/gameplay.lua 为单一来源，设置文件作为用户覆盖。
+    require("config.gameplay").apply_overrides(settings.gameplay)
 
     local sw = settings.screen and settings.screen.width or 1280
     local sh = settings.screen and settings.screen.height or 800
@@ -148,6 +150,13 @@ function love.load(args)
     unit_panel = UnitPanel.new()
     rebuild_menu()
     game_state = "menu"
+    for _, arg in ipairs(args or {}) do
+        if arg == "--fire-profile" then
+            require("tools.fire_profile").run()
+            love.event.quit()
+            return
+        end
+    end
     for _, arg in ipairs(args or {}) do
         if arg == "--verify" then
             _G.VERIFY_RUNNING=true
@@ -320,7 +329,7 @@ function love.load(args)
             local target=game:get_enemy_units(0)[1]
             target.x,target.y=u.x+600,u.y
             u.skill_data={type="charge_beam",range=1800,damage=650};u.skill_target=target
-            require("systems.special_attacks").prepare(u)
+            require("battle.skills.registry").prepare(u)
             require("systems.skill").execute(u,game)
             camera:focus_on(u.x+300,u.y);camera.zoom=0.8;camera.target_zoom=0.8
             _G.VERIFY_NAME="verification-release.png"
@@ -557,7 +566,7 @@ function cancel_command()
 end
 
 local function commandable_selected_units(include_mothership) return Selection.commandable(game,include_mothership) end
-local function set_units_returning(units) Selection.set_returning(units) end
+local function set_units_returning(units) Selection.set_returning(game,units) end
 local function select_all_command_units() return Selection.select_all_command_units(game) end
 
 local function command_defense(units)

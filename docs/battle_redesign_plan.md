@@ -14,14 +14,15 @@
 
 | 职责 | 目标归属 | 当前情况 |
 |---|---|---|
+| 命令优先级与仲裁 | battle/commands.lua | 已完成：玩家命令优先，AI/自动行为全部经命令层下发 |
 | 单位创建、兼容接口 | entities/unit.lua | 仍包含状态机和支援流程，需要逐项迁出 |
 | 飞行与路径跟踪 | battle/unit/movement.lua | 已提取，需重做推进、转弯与到达约束 |
 | 目标有效性与保持 | battle/unit/targeting.lua | 有基础判断，缺明确优先级与稳定性策略 |
 | 武器开火、冷却和热量 | battle/unit/combat.lua、weapons.lua、heat.lua | 已提取，需统一参数含义和开火诊断 |
-| 机型战术决策 | battle/unit/types/<type>.lua | 目前只有 sniper；其他多数仍用 units/<type>/logic.lua |
+| 机型战术决策 | battle/unit/types/<type>.lua | 已完成：15 种机型全部迁入，common.lua 提炼侧移/直线双引擎，旧 units/*/logic.lua 已删除 |
 | 弹道生成与命中 | battle/unit/projectile.lua、entities/projectile.lua | 已分离生成与实体，需继续整理炮口/弹道视觉 |
-| 舰队级 AI | battle/ai/ | controller 目前仍转发 systems/ai.lua |
-| 必杀技 | battle/skills/ | registry 尚未接管，实际在 systems/skill.lua、special_attacks.lua |
+| 舰队级 AI | battle/ai/ | 已分层迁移（profiles/strategy/focus/executor/controller），systems/ai.lua 已删除 |
+| 必杀技 | battle/skills/ | 已完成：registry 分发全部技能，systems/skill.lua 只作门面，systems/special_attacks.lua 已删除 |
 
 先采用每种特殊行为一个类型脚本，不为每个机体复制目标选择、移动和武器实现。超过约 500 行再按完整职责拆分，不一函数一文件。不创建没有实现的空目录或假入口。
 

@@ -19,6 +19,7 @@ radius = 14
 sprite_color = {100, 255, 100}
 
 [weapon.main]
+energy_cost = 3
 type = "ranged"
 range = 360
 damage = 20
@@ -27,6 +28,7 @@ arc = 100
 direction = "front"
 
 [weapon.machine_gun]
+energy_cost = 1
 type = "ranged"
 range = 220
 damage = 5

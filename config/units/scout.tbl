@@ -1,4 +1,5 @@
 [stats]
+attack_energy_cost = 2
 type = "scout"
 name = "侦察机"
 description = "高速侦察和牵制，火力弱但索敌、机动和支援能力强。"
@@ -23,3 +24,11 @@ type = "buff_speed"
 speed_multiplier = 1.65
 radius = 320
 duration = 6
+
+[behavior]
+break_distance = 160
+reposition_distance = 190
+reposition_angle = 1.05
+reposition_time = 0.5
+approach_boost = 1.35
+lead_time = 0.4

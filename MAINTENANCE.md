@@ -28,7 +28,7 @@ Windows 发布可先运行根目录的 `build_release.bat`，它会生成 `relea
 | `entities/unit.lua` | 单位状态机、攻击、补给、受击、技能蓄力 |
 | `entities/projectile.lua` | 普通弹、导弹、范围弹道、连续碰撞检查 |
 | `entities/effect.lua` | 世界空间效果，效果不直接代替伤害结算 |
-| `units/<type>/logic.lua` | 机型的行为入口；通用机动复用 `units/shared.lua` |
+| `battle/unit/types/<type>.lua` | 每种机型的战术脚本；侧移掠袭/直线压迫共用 `battle/unit/types/common.lua`（对应 GoK Attack.c 两个攻击样式） |
 | `units/<type>/dialogue.lua` | 机型层面的兜底移动和闲聊，不保存关卡剧情 |
 | `config/units/*.tbl` | 机体基础数值、武器、技能参数 |
 | `config/characters.lua` | 原始角色 ID、中文名、语气规则 |
@@ -41,21 +41,21 @@ Windows 发布可先运行根目录的 `build_release.bat`，它会生成 `relea
 | `systems/mission_script.lua` | 剧情队列、条件判定、角色查找和剧情显示位置 |
 | `systems/objectives.lua` | 护送、限时防守、母舰与全歼任务 |
 | `systems/orders.lua` | 玩家命令验证和下发，禁止命令敌舰 |
-| `systems/skill.lua` | 技能可用性、目标模式、名称、通用技能结算 |
-| `systems/special_attacks.lua` | 蓄力贯穿、连续轰炸、滑步碰撞及任务队列 |
 | `systems/cinematic.lua` | 最多三条并行的侧边必杀演出，不改镜头 |
 | `systems/skill_visuals.lua` | 屏幕短闪、释放慢动作，不负责技能伤害 |
-| `battle/unit/targeting.lua` | 通用敌方目标有效性、射程与最近目标选择 |
 | `battle/unit/targeting.lua` | 通用敌方目标有效性、射程、武器攻击扇区和最近目标选择 |
 | `battle/unit/movement.lua` | 通用路径规划、移动、转向、加速和减速惯性 |
 | `battle/unit/combat.lua` | 通用攻击条件、能量消耗、武器遍历、齐射和攻击节拍 |
 | `battle/unit/weapons.lua` | 通用武器列表规范化、类型预设和过热接口 |
 | `battle/unit/weapon_info.lua` | 供属性面板读取机体实际武器、冷却、过热和方向数据 |
-| `battle/unit/heat.lua` | 武器热量预留接口，当前默认不启用过热限制 |
+| `battle/unit/heat.lua` | 武器热量系统：已启用，每武器独立累积，过热禁止开火，散热后自动恢复 |
 | `battle/unit/types/sniper.lua` | 远程狙击机的保持距离和主动后撤行为 |
+| `battle/commands.lua` | 命令层：玩家与自动命令（AI/自动行为/受击反锁）写状态的唯一入口，含优先级仲裁与幂等 |
+| `battle/ai/` | 舰队 AI 分层：profiles 数据、strategy 战略、focus 集火、executor 单舰执行、controller 组装 |
 | `battle/unit/projectile.lua` | 按武器类型生成普通弹、导弹、炮击和狙击实体弹 |
 | `battle/weapons.lua` | 普通武器类型注册；必杀技不放在这里 |
-| `battle/skills/registry.lua` | 必杀技类型注册预留入口，实际结算暂由 `systems/skill.lua` 负责 |
+| `battle/skills/` | 必杀技注册表与各技能实现；`registry.lua` 分发，蓄力/突进/轰炸的逐帧推进也在此 |
+| `systems/skill.lua` | 必杀技门面：保持对外签名，实现分发到 battle/skills 注册表 |
 | `systems/economy.lua` | 资源、建设/招募/研究队列、退款、按槽位的后勤反馈 |
 | `systems/minerals.lua` | 矿脉、剩余矿藏、采集站绑定与产出 |
 | `systems/preferences.lua` | 跨关卡、跨启动的操作偏好 |

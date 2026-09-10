@@ -28,16 +28,18 @@ function V.run()
                 Objectives.update(game,o.spec.duration)
                 assert(Manager.check_victory(game),"survival objective")
             elseif o.spec.type=="flagship" then
-                game:get_mothership(1).alive=false;Objectives.update(game,0.1)
+                game:get_mothership(1).alive=false;game:invalidate_team_cache();Objectives.update(game,0.1)
                 assert(Manager.check_victory(game),"enemy flagship objective")
             else
                 for _,u in ipairs(game:get_enemy_units(0)) do u.alive=false end
+                game:invalidate_team_cache()
                 game.pending_waves={{team=1,time=999}}
                 Objectives.update(game,0.1);assert(not Manager.check_victory(game),"wait for scheduled enemies")
                 game.pending_waves={};Objectives.update(game,0.1)
                 assert(Manager.check_victory(game),"all waves cleared")
             end
             game:get_mothership(0).alive=false
+            game:invalidate_team_cache()
             assert(Manager.check_defeat(game) and not Manager.check_victory(game),"base loss overrides victory")
             Mission.finish(game,"defeat");Mission.update(game,0)
             assert(not Mission.current(game),"mission result has no embedded dialogue")
@@ -91,19 +93,19 @@ function V.run()
     assert(econ.logistics.enemy.unit.game==econ and econ.logistics.enemy.unit.team==1,"enemy slot carries faction")
     Economy.say(econ,"queued");Economy.say(econ,"cancel")
     assert(econ.researcher.text~="" and econ.researcher.text~="queued" and econ.researcher.queue[1].text~="","economy feedback queues per slot")
-    local Special=require("systems.special_attacks")
+    local Registry=require("battle.skills.registry")
     local g=Game.new()
     local u=Unit.new(0,0,0,Manager.unit_config("sniper"));u.character_id=4;g:add_unit(u)
     local t=Unit.new(400,0,1,{max_hp=3000});g:add_unit(t)
-    u.skill_target=t;Special.prepare(u);t.y=150
-    Special.execute(u,g);assert(t.hp==t.max_hp,"locked beam can be dodged")
-    u.skill_data={type="sweep_bombardment",count=12,damage=65,range=1500};u.skill_target=t;Special.prepare(u)
-    Special.execute(u,g);Special.update(g,1)
+    u.skill_target=t;Registry.prepare(u);t.y=150
+    Registry.resolve("charge_beam").execute(u,g);assert(t.hp==t.max_hp,"locked beam can be dodged")
+    u.skill_data={type="sweep_bombardment",count=12,damage=65,range=1500};u.skill_target=t;Registry.prepare(u)
+    Registry.resolve("sweep_bombardment").execute(u,g);Registry.tick(g,1)
     assert(#g.projectiles==12 and #g.skill_jobs==0,"barrage schedules twelve shots")
-    u.skill_data={type="dash_strike",range=650,damage=380};t.x,t.y=400,0;u.skill_target=t;Special.prepare(u);Special.execute(u,g)
-    for _=1,10 do Special.update_dash(u,0.05,g) end
+    u.skill_data={type="dash_strike",range=650,damage=380};t.x,t.y=400,0;u.skill_target=t;Registry.prepare(u);Registry.resolve("dash_strike").execute(u,g)
+    for _=1,10 do Registry.update_dash(u,0.05,g) end
     assert(u.x>400 and t.hp<t.max_hp,"dash moves and hits")
-    local hp=t.hp;Special.update_dash(u,1,g);assert(t.hp==hp,"dash hits once")
+    local hp=t.hp;Registry.update_dash(u,1,g);assert(t.hp==hp,"dash hits once")
     local Cinema=require("systems.cinematic")
     Cinema.start(g,u);Cinema.start(g,t)
     assert(#g.cutins==2,"simultaneous compact cutins")

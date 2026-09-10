@@ -6,7 +6,6 @@ local labels = {
     idle = "待命",
     moving = "移动",
     attacking = "攻击",
-    circle_strafing = "绕飞",
     repairing = "修理",
     following = "跟随",
     returning = "返航",

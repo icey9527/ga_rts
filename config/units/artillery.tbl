@@ -18,3 +18,7 @@ type = "orbital_bombardment"
 damage = 350
 radius = 300
 range = 1500
+
+[behavior]
+too_close = 780
+approach_boost = 1.0

@@ -4,7 +4,7 @@ local Targeting=require("battle.unit.targeting")
 local Weapons=require("battle.unit.weapons")
 
 function Fighter.update(unit,dt,game)
-    if (unit.state~="attacking" and unit.state~="circle_strafing")
+    if unit.state~="attacking"
        or not Targeting.is_valid_enemy(unit,unit.attack_target) then
         unit.fighter_pass=nil;unit._approach_speed_multiplier=nil
     end

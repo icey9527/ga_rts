@@ -26,3 +26,7 @@ count = 14
 damage = 48
 range = 980
 projectile_speed = 285
+
+[behavior]
+too_close = 580
+approach_boost = 1.05

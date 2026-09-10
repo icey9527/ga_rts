@@ -35,6 +35,8 @@ function Weapons.normalize(list,defaults)
         weapon.direction=weapon.direction or d.direction
         weapon.cooldown=weapon.cooldown or (defaults and defaults.cooldown) or 1
         weapon.cooldown_timer=weapon.cooldown_timer or 0
+        -- 炮击弹没有目标引用，靠落点溅射结算：缺省给 60，防止造出命中不结算的哑弹。
+        if (weapon.type=="artillery") and not weapon.splash_radius then weapon.splash_radius=60 end
         local heat_defaults={
             machine_gun={heat_per_shot=2,max_heat=100,cool_rate=24},
             sniper_rifle={heat_per_shot=18,max_heat=100,cool_rate=14},

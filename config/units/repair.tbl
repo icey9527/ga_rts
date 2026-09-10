@@ -1,4 +1,5 @@
 [stats]
+attack_energy_cost = 2
 type = "repair"
 name = "维修机"
 description = "专职维修和补给支援，火力极弱但能显著延长舰队续航。"
@@ -18,3 +19,7 @@ sprite_color = {50, 255, 100}
 
 [skill]
 type = "fleet_heal"
+
+[behavior]
+too_close = 190
+approach_boost = 1.2

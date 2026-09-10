@@ -11,7 +11,14 @@ function Movement.move_towards(unit,tx,ty,step,game)
         unit.route=nav.route(game,unit,tx,ty);unit.route_x,unit.route_y,unit.route_time=tx,ty,game.level_time+1.5
     end
     local point=unit.route and unit.route[1]
-    if not point then game:report_event(unit,"failed","航线受阻，请重新指定航点。");return false end
+    if not point then
+        -- 受阻可能持续多帧，同一单位 2 秒内只播报一次。
+        if game.level_time-(unit.route_warn_time or -math.huge)>=2 then
+            unit.route_warn_time=game.level_time
+            game:report_event(unit,"failed","航线受阻，请重新指定航点。")
+        end
+        return false
+    end
     local dx,dy=point.x-unit.x,point.y-unit.y
     local dist=math.sqrt(dx*dx+dy*dy)
     local max_speed=unit.speed* (unit.state=="attacking" and (unit._approach_speed_multiplier or 1) or 1)
@@ -19,7 +26,7 @@ function Movement.move_towards(unit,tx,ty,step,game)
     if dist>0 then
         -- 统一惯性：速度逐步接近期望速度，避免所有机体到点即停。
         local dt=step/math.max(max_speed,1)
-        local cruise=unit.state=="attacking" or unit.state=="circle_strafing"
+        local cruise=unit.state=="attacking"
         -- Propulsion follows heading; weapon aiming cannot turn a translating hull sideways.
         local desired=atan2(dy,dx)
         local diff=(desired-unit.angle+math.pi)%(2*math.pi)-math.pi
@@ -44,7 +51,7 @@ function Movement.move_towards(unit,tx,ty,step,game)
         table.remove(unit.route,1)
         if #unit.route==0 then
             unit.route=nil
-            if unit.state~="attacking" and unit.state~="circle_strafing" then unit.vx,unit.vy=0,0 end
+            if unit.state~="attacking" then unit.vx,unit.vy=0,0 end
             return true
         end
     end

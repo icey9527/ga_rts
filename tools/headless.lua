@@ -34,7 +34,7 @@ local target=Unit.new(400,0,1,{max_hp=3000});g:add_unit(target)
 u.team_id="rune";target.team_id="rune";g.team_id="rune"
 u.sp=u.max_sp;u.skill_target=target
 assert(u:use_skill(g));assert(u.skill_pending>1,"sniper charges")
-require("systems.special_attacks").execute(u,g)
+require("battle.skills.registry").resolve("charge_beam").execute(u,g)
 assert(target.hp<target.max_hp and #g.effects>0,"beam damages and draws")
 local repair=Unit.new(0,0,0,Manager.unit_config("repair"));g:add_unit(repair)
 local ms=g:get_mothership(0);repair.x,repair.y=ms.x,ms.y;repair.state="supplying"

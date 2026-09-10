@@ -33,6 +33,7 @@ retreat_distance = 650
 safe_distance = 950
 escape_speed_multiplier = 1.7
 escape_replan_interval = 0.8
+escape_lateral = 260
 
 [skill]
 type = "charge_beam"

@@ -27,3 +27,7 @@ damage = 65
 range = 900
 radius = 240
 projectile_speed = 270
+
+[behavior]
+too_close = 500
+approach_boost = 1.05

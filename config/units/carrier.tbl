@@ -1,4 +1,5 @@
 [stats]
+attack_energy_cost = 3
 type = "carrier"
 name = "轻型航母"
 description = "厚血支援舰，慢速远程火力和舰队攻击增益。"
@@ -25,3 +26,7 @@ type = "buff_attack"
 attack_multiplier = 1.45
 radius = 520
 duration = 8
+
+[behavior]
+too_close = 540
+approach_boost = 1.0

@@ -109,7 +109,8 @@ function LevelManager.load_level(filename, game)
     local ai_cfg = data.ai or {}
     local difficulty = ai_cfg.difficulty or "normal"
     local personality = ai_cfg.personality or "balanced"
-    table.insert(game.ai_controllers, AI.new(1, difficulty, personality))
+    -- 敌方 = 玩家队伍的另一侧（当前部署固定双阵营 0/1）
+    table.insert(game.ai_controllers, AI.new(1 - game.player_team, difficulty, personality))
 
     -- store level metadata
     local meta = data.meta or data["name"] or {}
@@ -136,12 +137,19 @@ function load_unit_config(unit_id)
     if ok and cfg then
         local p=require("config.pacing")
         cfg.stats.max_hp=math.floor((cfg.stats.max_hp or 100)*p.hull_multiplier)
+        cfg.stats.attack_damage=math.floor((cfg.stats.attack_damage or 10)*p.damage_multiplier)
         cfg.stats.attack_cooldown=(cfg.stats.attack_cooldown or 1)*p.cooldown_multiplier
         cfg.stats.projectile_speed=(cfg.stats.projectile_speed or 400)*p.projectile_speed_multiplier
+        -- pacing 倍率在加载时一次乘入：配置加载后的数值即实际结算数值，
+        -- take_damage 不再二次缩放；属性面板与伤害调试不需要心算倍率。
+        if cfg.skill and cfg.skill.damage then
+            cfg.skill.damage=math.floor(cfg.skill.damage*p.damage_multiplier)
+        end
         for section,weapon in pairs(cfg) do
             if type(section)=="string" and section:match("^weapon%.") then
                 if weapon.cooldown then weapon.cooldown=weapon.cooldown*p.cooldown_multiplier end
                 if weapon.projectile_speed then weapon.projectile_speed=weapon.projectile_speed*p.projectile_speed_multiplier end
+                if weapon.damage then weapon.damage=math.floor(weapon.damage*p.damage_multiplier) end
             end
         end
         unit_configs[unit_id] = cfg

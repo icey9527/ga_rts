@@ -1,7 +1,7 @@
 -- Forward-flight passes use fixed, per-unit waypoints instead of mutually moving orbit centers.
 local Sniper={}
 function Sniper.update(unit,dt,game)
-    if unit.state~="attacking" and unit.state~="circle_strafing" then
+    if unit.state~="attacking" then
         unit.sniper_pass=nil;unit.sniper_home=nil;unit.sniper_escape=nil;unit._approach_speed_multiplier=nil
     end
 end
@@ -22,26 +22,44 @@ function Sniper.fly(unit,dt,game)
     end
     if escape then
         if threat and (not escape.threat.alive or unit:distance_to(threat)+80<unit:distance_to(escape.threat)) then
-            escape.threat=threat;escape.time=0
+            escape.threat=threat;escape.time=0;escape.phase=1;escape.x=nil
         end
         local danger=escape.threat
-        if not threat and (not danger.alive or unit:distance_to(danger)>=safe) then
+        if not threat and (not danger.alive or (unit:distance_to(danger)>=safe and (escape.phase or 1)>=3)) then
             unit.sniper_escape=nil;unit.route=nil
         else
             escape.time=escape.time-dt
-            if escape.time<=0 or not escape.x or unit:dist_to_pos(escape.x,escape.y)<50 then
+            escape.phase=escape.phase or 1
+            -- Three short phases make the escape readable but hard to track:
+            -- break outward, reverse the lateral vector, then turn back into a firing lane.
+            local phase_length=({[1]=0.85,[2]=0.75,[3]=0.95})[escape.phase] or 0.8
+            if escape.time<=0 or not escape.x or unit:dist_to_pos(escape.x,escape.y)<55 then
                 local dx,dy=unit.x-danger.x,unit.y-danger.y
                 local distance=math.sqrt(dx*dx+dy*dy)
                 if distance<1 then dx,dy=math.cos(unit.angle),math.sin(unit.angle);distance=1 end
-                local reach=math.max(240,safe-distance+160)
-                -- A little lateral offset avoids retracing the attack line, without strafing.
-                escape.x=unit.x+(dx/distance-dy/distance*unit.circle_direction*0.25)*reach
-                escape.y=unit.y+(dy/distance+dx/distance*unit.circle_direction*0.25)*reach
-                escape.time=cfg.escape_replan_interval or 0.8
+                local ax,ay=dx/distance,dy/distance
+                local px,py=-ay,ax
+                local side=escape.side or unit.circle_direction
+                escape.side=side
+                if escape.phase==2 then side=-side end
+                if escape.phase==3 then side=side*0.45 end
+                escape.lateral_sign=(side>0 and 1 or -1)
+                local lateral=(cfg.escape_lateral or 260)*(escape.phase==3 and 0.65 or 1)
+                local reach=math.max(220,safe-distance+120)
+                -- The nose still points at each waypoint; this is a curved flight path,
+                -- not a lateral teleport or strafe.
+                escape.x=unit.x+ax*reach+px*side*lateral
+                escape.y=unit.y+ay*reach+py*side*lateral
+                escape.time=phase_length
+                escape.phase=escape.phase+1
+                if escape.phase>3 then escape.phase=3 end
             end
-            local boost=cfg.escape_speed_multiplier or 1.7
+            local boost=(cfg.escape_speed_multiplier or 1.7)+(escape.phase==2 and 0.12 or 0)
             unit._approach_speed_multiplier=boost
             unit:_move_towards(escape.x,escape.y,unit.speed*boost*dt,game)
+            if escape.phase>=3 and unit:distance_to(danger)>=safe then
+                unit.sniper_escape=nil;unit.route=nil;unit.sniper_pass=nil
+            end
             return true
         end
     end

@@ -21,6 +21,7 @@ radius = 11
 sprite_color = {255, 200, 100}
 
 [weapon.interceptor_guns]
+energy_cost = 2
 type = "ranged"
 visual = "interceptor_tracer"
 sound = "shot"

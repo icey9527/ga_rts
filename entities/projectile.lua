@@ -158,6 +158,15 @@ function P:update(dt, game)
     return true
 end
 
+-- 命中结算：普通弹药按实际造成的伤害给施放者回充 SP（pacing.sp_per_damage_dealt）。
+-- 技能弹药带 no_sp 标记，防止必杀伤害自充形成循环。
+local function credit_sp(source, dealt)
+    if source and dealt and dealt > 0 then
+        source.sp = math.min(source.max_sp or 100, (source.sp or 0)
+            + dealt * require("config.pacing").sp_per_damage_dealt)
+    end
+end
+
 function P:_on_hit(game)
     local Effect = require("entities.effect")
     if self.splash > 0 then
@@ -167,7 +176,8 @@ function P:_on_hit(game)
                 local d = math.sqrt((u.x-self.x)^2 + (u.y-self.y)^2)
                 if d <= self.splash then
                     local ratio = 1 - (d / self.splash) * 0.5
-                    u:take_damage(math.floor(self.damage * ratio),self.source)
+                    local dealt = u:take_damage(math.floor(self.damage * ratio),self.source)
+                    if not self.no_sp then credit_sp(self.source, dealt) end
                 end
             end
         end
@@ -175,7 +185,8 @@ function P:_on_hit(game)
     else
         -- direct hit
         if self.target and self.target.alive and self.target.state ~= "dead" and (self.target.x-self.x)^2+(self.target.y-self.y)^2<=((self.target.radius or 15)+8)^2 then
-            self.target:take_damage(self.damage,self.source)
+            local dealt = self.target:take_damage(self.damage,self.source)
+            if not self.no_sp then credit_sp(self.source, dealt) end
         end
         game:add_effect(Effect.hit_spark(self.x, self.y-(self.z or 0)*0.22))
     end

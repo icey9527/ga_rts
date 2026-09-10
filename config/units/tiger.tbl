@@ -13,8 +13,10 @@ splash_radius = 75
 radius = 35
 
 [weapon.heavy_cannon]
+energy_cost = 6
 name = "双联重炮"
 type = "artillery"
+splash_radius = 100
 visual = "tiger_cannon"
 sound = "artillery"
 range = 660
@@ -28,6 +30,7 @@ splash_radius = 75
 heat_per_shot = 18
 
 [weapon.barrage]
+energy_cost = 2
 name = "压制弹幕"
 type = "ranged"
 visual = "machine_gun"
@@ -47,3 +50,7 @@ heat_per_shot = 2
 type = "missile_barrage"
 count = 14
 damage = 48
+
+[behavior]
+too_close = 350
+approach_boost = 1.1

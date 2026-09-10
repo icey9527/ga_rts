@@ -12,6 +12,7 @@ attack_type = "ranged"
 projectile_count = 7
 
 [weapon.main]
+energy_cost = 2
 type = "ranged"
 range = 340
 damage = 12
@@ -20,6 +21,7 @@ arc = 120
 direction = "front"
 
 [weapon.secondary]
+energy_cost = 4
 type = "missile"
 range = 560
 damage = 28
@@ -39,3 +41,7 @@ sprite_color = {255, 170, 80}
 type = "damage_aoe"
 damage = 120
 radius = 220
+
+[behavior]
+too_close = 260
+approach_boost = 1.15

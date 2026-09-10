@@ -1,5 +1,7 @@
 @echo off
 setlocal
+rem UTF-8 脚本头，避免中文提示在 GBK 代码页下被拆坏
+chcp 65001 >nul
 set "LOVE_EXE=C:\Program Files\LOVE\love.exe"
 set "OUT=%~dp0release"
 if not exist "%LOVE_EXE%" (

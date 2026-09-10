@@ -15,12 +15,12 @@ function Combat.can_attack(unit,game)
     return Targeting.is_valid_enemy(unit,unit.attack_target)
 end
 
-function Combat.energy_cost(unit,settings)
-    local cfg=(settings and settings.gameplay) or {}
-    return unit.unit_type=="mothership" and 0 or (cfg.energy_attack_cost or 5)
+function Combat.energy_cost(unit)
+    return unit.unit_type=="mothership" and 0 or require("config.gameplay").energy_attack_cost
 end
 
 -- A cycle budget is divided across its projectiles. Cancelled shots cost nothing.
+-- SP 不再按发结算：实际造成伤害时由弹道命中回充（entities/projectile.lua）。
 function Combat.emit(unit,game,volley,index,spawn)
     if volley.cancelled then return false end
     local weapon=volley.runtime
@@ -33,7 +33,6 @@ function Combat.emit(unit,game,volley,index,spawn)
         volley.cancelled=true;return false
     end
     unit.energy=math.max(0,unit.energy-volley.energy)
-    unit.sp=math.min(unit.max_sp,unit.sp+volley.sp)
     WeaponSystem.on_fire(weapon,1)
     return true
 end
@@ -68,9 +67,10 @@ end
 
 function Combat.fire(unit,game,spawn)
     if not Combat.can_attack(unit,game) then return false end
-    local cfg=(_G.SETTINGS and _G.SETTINGS.gameplay) or {}
     local target=unit.attack_target
     local fired=false
+    -- 攻击增益显式乘入快照；基础数值（含 pacing 倍率）在配置加载时已确定。
+    local attack_buff=(unit.buffs and unit.buffs.attack) and unit.buffs.attack.multiplier or 1
     for _,weapon in ipairs(unit.weapons or {}) do
         if not weapon.burst_pending and unit:distance_to(target)<=(weapon.range or unit.attack_range)
            and unit:distance_to(target)>=(weapon.min_range or 0)
@@ -80,13 +80,12 @@ function Combat.fire(unit,game,spawn)
             local bursts=math.max(1,math.floor(weapon.burst_count or unit.burst_count or 1))
             local shot={}
             for k,v in pairs(weapon) do shot[k]=v end
-            shot.damage=(weapon.damage or unit.configured_attack_damage)*unit.attack_damage/math.max(1,unit.configured_attack_damage)
+            shot.damage=math.max(1,(weapon.damage or unit.attack_damage)*attack_buff)
             shot.count=count
             shot.type=weapon.type or unit.attack_type
             shot.visual=weapon.visual or weapon.id or shot.type
             local volley={runtime=weapon,shot=shot,target=target,remaining=0,
-                energy=math.max(0,weapon.energy_cost or Combat.energy_cost(unit,_G.SETTINGS))/(count*bursts),
-                sp=math.max(0,weapon.sp_gain or cfg.sp_gain_per_attack or 8)/(count*bursts)}
+                energy=math.max(0,weapon.energy_cost or Combat.energy_cost(unit))/(count*bursts)}
             local emitted=0
             for index=0,count-1 do
                 if Combat.emit(unit,game,volley,index,spawn) then emitted=emitted+1 end

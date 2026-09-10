@@ -1,7 +1,7 @@
 local Fonts = require("core.fonts")
 local Pilots = require("ui.pilots")
 local Panel = {}
-local labels = {idle="待命",moving="航行",attacking="交战",circle_strafing="缠斗",repairing="维修",following="护航",returning="返航",supplying="补给",undocking="离舰",disabled="失能"}
+local labels = {idle="待命",moving="航行",attacking="交战",repairing="维修",following="护航",returning="返航",supplying="补给",undocking="离舰",disabled="失能"}
 function Panel.new()
     return setmetatable({visible=true,x=12,y=48,width=238,scroll=0,item_h=58,side="friendly"},{__index=Panel})
 end
@@ -41,7 +41,7 @@ function Panel:draw(game)
                 g.setColor(0.12,0.15,0.17,1)
             else g.setColor(0.055,0.07,0.08,1) end
             g.rectangle("fill",self.x+4,y,self.width-8,self.item_h-2,2,2)
-            local expression=(u.flash_timer or 0)>0 and "hit" or ((u.state=="attacking" or u.state=="circle_strafing") and "attack" or nil)
+            local expression=(u.flash_timer or 0)>0 and "hit" or (u.state=="attacking" and "attack" or nil)
             Pilots.draw(u,self.x+8,y+5,44,expression)
             g.setColor(0.9,0.93,0.94,1)
             g.setFont(Fonts.get(12))
