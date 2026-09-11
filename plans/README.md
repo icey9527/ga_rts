@@ -32,12 +32,14 @@
 
 | 文件 | 计划 | 前置 | 状态 |
 | --- | --- | --- | --- |
-| `05_balance_effects_cleanup.md` | 平衡实测与手感收尾（火力剖面读数已列入） | 无 | 可立即做 |
-| `06_entities_into_battle.md` | entities 拆迁入 battle + 特效按通用/技能专属归类 | 无 | 可与 05 并行 |
+| `05_balance_effects_cleanup.md` | 平衡收尾：自动化修复已完成，只剩人工实机验收 | 无 | **等用户实机** |
+| `06_entities_into_battle.md` | entities 拆迁入 battle + 特效按通用/技能专属归类 | 无 | 下一步 |
 | `07_weapon_diversification.md` | 武器多元化：伤害/装甲克制、点防御拦截、过热差异化 | 05 | 排队 |
 | `08_structure_cleanup.md` | systems 分流（battle/mission/systems 三层）+ 死代码清单 | 06 | 排队 |
 | `09_maps_redesign.md` | 关卡改为 maps/ 目录扫描的自描述地图 | 08 | 排队 |
-| `10_assets_disposition.md` | 资源目录处置（dump 出仓归档；assets 保留，含决策点） | 无 | **需用户确认** |
+
+计划 10（资源目录）已关闭（2026-09-11）：用户确认 `dump/` 是临时目录且
+已 git 忽略，无需处理；`assets/` 保留为运行时素材目录。
 
 ## 2026-09-10 残留与未实现功能排查结论（写计划时的依据）
 

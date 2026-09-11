@@ -8,9 +8,13 @@
 
 攻击增益（`buffs.attack`）不再改写 `unit.attack_damage` 基础值：`battle/unit/combat.lua` 开火时把 `buffs.attack.multiplier` 显式乘入武器伤害快照；快照生成后连发延迟弹药不再读取单位属性。
 
-SP 的唯一来源是实际战斗效果（不再按开火次数）：普通弹药命中/溅射按 `pacing.sp_per_damage_dealt` 给施放者回充（光束类即时结算同理由 spawn 回充）；承受伤害按 `pacing.sp_per_damage_taken` 给受击方回充，重甲高受击单位自然更快充能；维修机按实际修复量以 `pacing.sp_per_repair` 回充。必杀技弹药带 `no_sp` 标记，必杀伤害不回充施放者 SP，防止自充循环。拦截机这类高频低伤武器与狙击这类低频高伤武器的充能速度由此按伤害输出对齐。
+SP 的来源是实际战斗效果（不再按开火次数）：普通弹药命中/溅射按 `pacing.sp_per_damage_dealt` 给施放者回充并附加 `sp_per_hit` 命中小额（0.4/发，防止高频低伤武器充能过慢；光束类即时结算同理由 spawn 回充）；承受伤害按 `pacing.sp_per_damage_taken` 给受击方回充，重甲高受击单位自然更快充能；维修机按实际修复量以 `pacing.sp_per_repair` 回充。基准充能时间：拦截机曳光约 26 秒、狙击约 14 秒充满。必杀技弹药带 `no_sp` 标记，必杀伤害不回充施放者 SP，防止自充循环。
 
-慢速炮击弹（`artillery` 类型）使用全量前置与更小散布（`pacing.artillery_lead_fraction/artillery_spread_factor`）：重火力的命中靠预测而非弹速，目标变向仍可规避，但匀速直线飞行不再无限戏耍重装单位。
+武器能量按角色显式配置：快射压制武器（机枪类 1-2）、常规火炮（3-4）、重炮/导弹（4-6），单位缺省回落到 `config/gameplay.lua` 的每周期 5 点。被动回复 1.8/秒意味着高能耗组合仍会枯竭并需要返航补给——这是设计，不是 bug；调平衡时先用 `--fire-profile` 看实际开火率。
+
+artillery 类型武器在 `weapons.normalize` 有 60 缺省溅射：炮击弹没有目标引用、完全靠落点溅射结算，缺省防止配置遗漏造出命中不结算的哑弹（2026-09-11 修复：重型主炮曾因此全程零命中）。
+
+慢速炮击弹（`artillery` 类型）使用全量前置与更小散布（`pacing.artillery_lead_fraction/artillery_spread_factor`）：重火力的命中靠预测而非弹速，目标变向仍可规避，但匀速直线飞行不再无限戏耍重装单位。`--fire-profile` 输出静止/机动双档 DPS，是平衡调整的对照基准（当前梯度：缠斗 7-11 < 重装 16-23 < 狙击，详见 plans/05）。
 
 ## 武器与弹道
 
