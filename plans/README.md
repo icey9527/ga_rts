@@ -42,13 +42,15 @@
 | 文件 | 计划 | 前置 | 状态 |
 | --- | --- | --- | --- |
 | `05_balance_effects_cleanup.md` | 平衡收尾：只剩人工实机验收 | 无 | **等用户实机** |
-| `06_entities_into_battle.md` | entities 拆迁入 battle + 特效按通用/技能专属归类 | 无 | 下一步 |
+| `06_entities_into_battle.md` | entities 拆迁入 battle + 特效按通用/技能专属归类 | 无 | **下一步** |
 | `07_weapon_diversification.md` | 武器多元化：伤害/装甲克制、点防御拦截、过热差异化 | 05 | 排队 |
-| `08_structure_cleanup.md` | systems 分流（battle/mission/systems 三层）+ 死代码清单（含随机池文件删除） | 06 | 排队 |
-| `09_maps_redesign.md` | 关卡改为 maps/ 目录扫描的自描述地图 | 08 | 排队 |
+| `08_structure_cleanup.md` | 目录分层 + 存档系统重置（profile/loadout/scores 归一）+ 死代码 | 06 | 排队 |
+| `09_maps_redesign.md` | 地图系统取代关卡，删除 levels 旧结构 | 08 | 排队（用户指定尽快） |
 | `11_combat_feel.md` | 战斗手感：技能武器绑定、技能后摇、补给滑行 | 无 | 排队 |
 | `12_weapon_facings.md` | 武器方位：侧舷/尾炮接敌、非正面武器自主目标、挂点 | 07 | 排队 |
-| `14_dialogue_face_system.md` | face.tbl 编号体系、每句头像、角色覆盖、面板子目录 | 无 | 排队（用户指定随后） |
+| `14_dialogue_face_system.md` | face.tbl 编号体系、每句头像、角色覆盖 | 无 | 排队 |
+| `16_dialogue_subsystem.md` | 对话独立子系统：事件总线，判定与战斗解耦（用户反馈 09-11） | 06 | 排队 |
+| `17_team_package_structure.md` | 指挥官/左右手移出 chara，advisor 子目录（用户反馈 09-11） | 与 14 同批 | 排队 |
 
 计划 10（资源目录）已关闭（2026-09-11）：用户确认 `dump/` 是临时目录且
 已 git 忽略，无需处理；`assets/` 保留为运行时素材目录。
