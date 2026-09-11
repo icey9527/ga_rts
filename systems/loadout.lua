@@ -66,11 +66,6 @@ function Loadout.for_side(side, team_id)
     return picked
 end
 
--- 旧接口兼容：无侧别语境按我方侧读取。
-function Loadout.for_team(team_id)
-    return Loadout.for_side("player", team_id)
-end
-
 -- 保存该侧整队名单（立即写盘）。ids 为编号列表。
 function Loadout.set_side(side, team_id, ids)
     if not team_id or team_id == "random" or team_id == "default" then return false end

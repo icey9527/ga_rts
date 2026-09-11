@@ -36,23 +36,27 @@ systems/（跨场服务，允许二级子目录归类）
 
 原则：只按运行职责分层；同层文件少于三个的不再拆子目录（避免碎片化）。
 
-## 存档系统重置（用户反馈 2026-09-11）
+## 存档系统重置（用户反馈 2026-09-11/12）
 
-现状散落：`saves/preferences.tbl`（偏好）、`saves/loadout.tbl`（编队）、
-根目录 `high_scores.tbl`/`high_scores.json`（计分）、无战局快照。
+**原则（用户明确）：不做旧档迁移兼容——直接重置，旧存档可删。**
 
-目标结构（一次重置，旧文件迁移后删除）：
+存档位置改为 **exe 运行目录**（便携式，不再进 AppData/LOVE）：
+
+- `systems/persist/` 统一用 io 直读直写，路径基于：
+  开发态 `love.filesystem.getSource()`（项目目录）/ 发行态
+  `love.filesystem.getSourceBaseDirectory()`（exe 旁），解析出一个可写根，
+  其下 `saves/`。
+- 目标结构（一次重置）：
 
 ```
-saves/
-  profile.tbl     偏好 + 上次敌我队伍 + 音量等（合并 preferences）
+<exe旁或项目>/saves/
+  profile.tbl     偏好 + 上次敌我队伍 + 音量（合并 preferences）
   loadout.tbl     编队（[player.队]/[enemy.队]，members={编号}）
-  scores.tbl      最高分（按 map/level id）
+  scores.tbl      最高分（按地图 id；根目录 high_scores.* 双格式删除）
 ```
 
-- 读写统一走 `systems/persist/` 一个门面：启动时读、变更即写、
-  校验与默认值集中一处；`high_scores.*` 从根目录迁入并清理双格式并存。
-- 战局快照（单位/弹道/波次/剧情游标）不在本计划——需要时单独立项。
+- 迁移脚本不写：读不到就全默认。战局快照（单位/弹道/剧情游标）
+  不在本计划——需要时单独立项。
 
 ## 步骤
 

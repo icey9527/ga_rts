@@ -192,7 +192,8 @@ function UI.toggle_member(which, id, cid)
     elseif UI.selected_count(which, id) < Loadout.limit() then
         target.selected = true
     else
-        UI.limit_flash = { team = id, expiry = UI.clock + 1.4 }
+        -- 满员提示按"侧"记录：一边满员不弹另一边（同队双侧也互不影响）。
+        UI.limit_flash = { side = which, team = id, expiry = UI.clock + 1.4 }
         return false
     end
     -- 按花名册顺序保存上阵编号（members = {编号,编号}）
@@ -347,7 +348,9 @@ local function draw_side(g, game, which, y0, selected)
         UI.member_hits[which][i] = { x = cx - 32, y = mem_cy - 4, w = 64, h = 68, id = e.id }
         local sc = hot and (1 + 0.05 * (0.5 + 0.5 * math.sin(UI.clock * 7))) or 1
         g.push("all");g.translate(cx,mem_cy+29);g.scale(sc,flip_scale*sc);g.translate(-cx,-mem_cy-29)
-        draw_avatar(g, m and m.team or id, e.id, cx-29, mem_cy, 58, game, mirror and 1 or 0, display_skin)
+        -- draw_avatar 的 (cx,cy) 是中心点：以悬停缩放原点 (cx, mem_cy+29)
+        -- 为中心绘制，头像框 (cx±31, mem_cy-2..+60) 与状态框完全重合。
+        draw_avatar(g, m and m.team or id, e.id, cx, mem_cy+29, 58, game, mirror and 1 or 0, display_skin)
         -- 状态标记画在悬停/翻牌变换内，与头像框（x-2,y-2,size+4）精确对齐。
         if e.selected then
             g.setColor(1,0.82,0.35,0.95); g.setLineWidth(2.5)
@@ -361,7 +364,7 @@ local function draw_side(g, game, which, y0, selected)
         g.pop()
     end
     -- 上阵计数（满员时闪烁提示）；皮肤循环不再挂队员头像，只保留三张卡片。
-    local flash = UI.limit_flash and UI.limit_flash.team == id and UI.clock < UI.limit_flash.expiry
+    local flash = UI.limit_flash and UI.limit_flash.side == which and UI.clock < UI.limit_flash.expiry
     local label = string.format("上阵 %d/%d", count, Loadout.limit())
     g.setFont(Fonts.get(15))
     if flash then
