@@ -92,6 +92,8 @@ local function calc_score() Score.calculate(game,settings) end
 local function rebuild_menu()
     if game then game.menu_confirm = nil end
     level_names,level_scores=BattleFlow.level_menu(level_files,TBL,high_scores)
+    -- 进入主菜单：头像拼图背景重新随机。
+    require("ui.menu_mosaic").refresh()
 
     if menu then
         menu:set_levels(level_names, level_scores)
@@ -156,6 +158,7 @@ function love.load(args)
             love.event.quit()
             return
         end
+        if arg == "--menu-shot" then _G.MENU_SHOT = 5 end
     end
     for _, arg in ipairs(args or {}) do
         if arg == "--verify" then
@@ -501,6 +504,19 @@ function love.draw()
         draw_playing()
     elseif game_state == "menu" then
         if menu then menu:draw() end
+        if _G.MENU_SHOT then
+            _G.MENU_SHOT = _G.MENU_SHOT - 1
+            if _G.MENU_SHOT <= 0 then
+                _G.MENU_SHOT = false
+                _G.VERIFY_NAME = "verification-menu.png"
+                love.graphics.captureScreenshot(function(data)
+                    local encoded = data:encode("png")
+                    local file = assert(io.open(love.filesystem.getSource().."/".._G.VERIFY_NAME, "wb"))
+                    file:write(encoded:getString()); file:close()
+                    love.event.quit()
+                end)
+            end
+        end
     elseif game_state == "victory" then
         Screens.draw_victory(game, current_level_name)
         Mission.draw(game)

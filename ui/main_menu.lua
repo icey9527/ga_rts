@@ -186,6 +186,9 @@ function MainMenu:draw()
     local font_sm = Fonts.get(16)
     if self.page=="home" then
         love.graphics.clear(0.025,0.035,0.075)
+        -- 头像俄罗斯方块背景（进入主菜单时重建，canvas 预渲染一次 draw）
+        local mosaic=require("ui.menu_mosaic").get()
+        if mosaic then love.graphics.draw(mosaic,0,0) end
         love.graphics.setFont(font_big);love.graphics.setColor(1,0.90,0.30);love.graphics.printf("深空指挥",0,52,w,"center")
         love.graphics.setFont(font_sm);love.graphics.setColor(0.72,0.78,0.92);love.graphics.printf("DEEP SPACE COMMAND",0,98,w,"center")
         local labels={"关卡模式","剧情模式（未开放）","必杀技预览（准备中）","设置","退出游戏"};self.menu_rects={}
