@@ -256,6 +256,21 @@ function Verify.run()
         require("systems.mission_script").start(exercise,"level_01.tbl")
         assert(require("systems.mission_script").busy(exercise),"authored prebattle conversation")
     end
+    -- 敌我选同一队：两侧编队互不共享（按 <侧.队> 记忆），双方都守上限。
+    do
+        local same=Game.new()
+        assert(levels.load_level("level_01.tbl",same))
+        require("systems.simulation").deploy(same,"moon","moon","spread")
+        for _,team in ipairs({0,1}) do
+            local n=0
+            for _,u in ipairs(same:get_units_by_team(team)) do
+                if u.unit_type~="mothership" then n=n+1 end
+            end
+            assert(n>0 and n<=require("systems.loadout").limit(),"same-team sides respect cap")
+        end
+        assert(require("systems.loadout").for_side("player","moon") ~= require("systems.loadout").for_side("enemy","moon"),
+            "loadout sides resolve independently")
+    end
     local Skill=require("systems.skill")
     local healer=Unit.new(0,0,0,{stats={type="repair"}})
     local patient=Unit.new(100,0,0,{})

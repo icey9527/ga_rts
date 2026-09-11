@@ -1,4 +1,5 @@
--- 大神樱：超高校级的格斗家。地上最强，外表威压但内心沉稳温柔，古风自称"吾"。
+-- 大神樱：超高校级的格斗家。被称作"地上最强"，外表威压但内心沉稳温柔。
+-- 说话文雅庄重、古风自称"吾"，武人风骨，重视信任与情义。
 return {
   friendly = {
     ready = {
@@ -45,9 +46,7 @@ return {
     failed = { "无法执行。再思。", "目标有误。重审。" },
     energy = { "能量将尽。吾先回营。", "补给。稍候。" },
     supplied = { "补给完成。可再战。", "好了。随时可上。" },
-    repair_done = {
-      "维修完成。此身可再战。",
-    },
+    repair_done = { "修理完成。多谢照拂。" },
     return_battle = { "吾回来了。", "重返战场。诸位勿忧。" },
   },
   follow_start = { "收到。吾随后。", "跟随开始。安心。" },
@@ -56,7 +55,7 @@ return {
   camera_follow_start = { "在看吾之机体？", "镜头……也好。让你们看清吾之觉悟。" },
   camera_follow_continue = { "尽管看。吾之强大，经得起注视。", "……外表如何无妨。心志才是武之根本。" },
   camera_follow_end = { "看毕？那吾继续修行。" },
-  formation_follow_start = { "收到跟随之命。执行。", "吾随尔等。" },
+  formation_follow_start = { "收到跟随之命。执行。", "吾随尔等同行。" },
   formation_follow_continue = { "跟随中。阵形齐整。", "间距正常。" },
   formation_follow_end = { "跟随完毕。各归其位。" },
   enemy = {

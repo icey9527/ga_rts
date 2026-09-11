@@ -24,6 +24,11 @@ function UI.list()
         local ok, ids = pcall(Registry.playable_ids)
         -- 随机混池已废弃：选人界面只列真实队伍（增援也只从本阵营召唤）。
         UI._list = (ok and type(ids) == "table" and #ids > 0) and ids or {"random"}
+        -- 记住上次敌我队伍：进部署界面默认选中，不用再切。
+        for i, tid in ipairs(UI._list) do
+            if tid == Preferences.get("last_player_team") then UI.player = i end
+            if tid == Preferences.get("last_enemy_team") then UI.enemy = i end
+        end
     end
     return UI._list
 end
@@ -142,39 +147,41 @@ local function side_display(side_id)
     }
 end
 
-function UI.team_entries(id)
+-- 队员行数据：花名册顺序 + 上阵标记。按 <侧别.队伍> 记忆——
+-- 敌我选同一队时上阵名单互不共享。随机编队全部视为已选。
+function UI.team_entries(which, id)
     if not UI._entries then UI._entries = {} end
-    local cached = UI._entries[id]
+    local key = which .. ":" .. id
+    local cached = UI._entries[key]
     if cached then return cached end
     local side = side_display(id)
     local entries = {}
     if id == "random" then
         for _, m in ipairs(side.members) do entries[#entries + 1] = { id = m.id, selected = true } end
     else
-        local selected, ship = {}, {}
-        for _, entry in ipairs(Loadout.for_team(id)) do
+        local selected = {}
+        for _, entry in ipairs(Loadout.for_side(which, id)) do
             selected[entry.id] = true
-            ship[entry.id] = entry.ship
         end
         for _, m in ipairs(side.members) do
-            entries[#entries + 1] = { id = m.id, ship = ship[m.id], selected = selected[m.id] or false }
+            entries[#entries + 1] = { id = m.id, selected = selected[m.id] or false }
         end
     end
-    UI._entries[id] = entries
+    UI._entries[key] = entries
     return entries
 end
 
-function UI.selected_count(id)
+function UI.selected_count(which, id)
     local n = 0
-    for _, e in ipairs(UI.team_entries(id)) do
+    for _, e in ipairs(UI.team_entries(which, id)) do
         if e.selected then n = n + 1 end
     end
     return n
 end
 
-function UI.toggle_member(id, cid)
+function UI.toggle_member(which, id, cid)
     if id == "random" then return false end
-    local entries = UI.team_entries(id)
+    local entries = UI.team_entries(which, id)
     local target
     for _, e in ipairs(entries) do
         if e.id == cid then target = e break end
@@ -182,18 +189,18 @@ function UI.toggle_member(id, cid)
     if not target then return false end
     if target.selected then
         target.selected = false
-    elseif UI.selected_count(id) < Loadout.limit() then
+    elseif UI.selected_count(which, id) < Loadout.limit() then
         target.selected = true
     else
         UI.limit_flash = { team = id, expiry = UI.clock + 1.4 }
         return false
     end
-    -- 按当前显示顺序保存（保留机型记录）
+    -- 按花名册顺序保存上阵编号（members = {编号,编号}）
     local save = {}
     for _, e in ipairs(entries) do
-        if e.selected then save[#save + 1] = { id = e.id, ship = e.ship } end
+        if e.selected then save[#save + 1] = e.id end
     end
-    Loadout.set_team(id, save)
+    Loadout.set_side(which, id, save)
     return true
 end
 
@@ -326,7 +333,7 @@ local function draw_side(g, game, which, y0, selected)
     draw_portrait_card(g, which, rx - 85, off_y, 170, 190, "右手", side.right, id == "random", slide, flash, display_skin);g.pop()
 
     -- 队员行：全部成员按花名册排列；金色描边=上阵，暗化=增援池，点击切换。
-    local entries = UI.team_entries(id)
+    local entries = UI.team_entries(which, id)
     local gap = 74
     local x0 = commander_cx - (#entries - 1) * gap / 2 + slide
     UI.member_hits = UI.member_hits or {}
@@ -340,16 +347,18 @@ local function draw_side(g, game, which, y0, selected)
         UI.member_hits[which][i] = { x = cx - 32, y = mem_cy - 4, w = 64, h = 68, id = e.id }
         local sc = hot and (1 + 0.05 * (0.5 + 0.5 * math.sin(UI.clock * 7))) or 1
         g.push("all");g.translate(cx,mem_cy+29);g.scale(sc,flip_scale*sc);g.translate(-cx,-mem_cy-29)
-        draw_avatar(g, m and m.team or id, e.id, cx-29, mem_cy, 58, game, mirror and 1 or 0, display_skin);g.pop()
+        draw_avatar(g, m and m.team or id, e.id, cx-29, mem_cy, 58, game, mirror and 1 or 0, display_skin)
+        -- 状态标记画在悬停/翻牌变换内，与头像框（x-2,y-2,size+4）精确对齐。
         if e.selected then
             g.setColor(1,0.82,0.35,0.95); g.setLineWidth(2.5)
-            g.rectangle("line", cx-31, mem_cy-3, 62, 66, 8, 8)
+            g.rectangle("line", cx-31, mem_cy-2, 62, 62, 8, 8)
         else
             g.setColor(0.01,0.02,0.04,0.62)
-            g.rectangle("fill", cx-31, mem_cy-3, 62, 66, 8, 8)
+            g.rectangle("fill", cx-31, mem_cy-2, 62, 62, 8, 8)
             g.setColor(0.45,0.5,0.55,0.8); g.setLineWidth(1.5)
-            g.rectangle("line", cx-31, mem_cy-3, 62, 66, 8, 8)
+            g.rectangle("line", cx-31, mem_cy-2, 62, 62, 8, 8)
         end
+        g.pop()
     end
     -- 上阵计数（满员时闪烁提示）；皮肤循环不再挂队员头像，只保留三张卡片。
     local flash = UI.limit_flash and UI.limit_flash.team == id and UI.clock < UI.limit_flash.expiry
@@ -486,12 +495,12 @@ function UI.click(x, y)
     local click_side
     if y >= show_y("player") and y < show_y("player") + SHOW_H then click_side="player"
     elseif y >= show_y("enemy") and y < show_y("enemy") + SHOW_H then click_side="enemy" end
-    -- 队员头像：点击切换上阵/增援池（两侧都可编辑，立即保存编队）。
+    -- 队员头像：点击切换上阵/增援池（两侧各自记忆，立即保存编队）。
     if click_side and UI.member_hits and UI.member_hits[click_side] then
         for _, hit in ipairs(UI.member_hits[click_side]) do
             if x >= hit.x and x <= hit.x + hit.w and y >= hit.y and y <= hit.y + hit.h then
                 local id = UI.list()[click_side == "player" and UI.player or UI.enemy]
-                UI.toggle_member(id, hit.id)
+                UI.toggle_member(click_side, id, hit.id)
                 return false
             end
         end
@@ -523,7 +532,12 @@ function UI.click(x, y)
         end
     end
     local cy = (show_y("player") + SHOW_H + show_y("enemy")) / 2
-    if math.abs(x - w / 2) <= 80 and math.abs(y - cy) <= 36 then return true end
+    if math.abs(x - w / 2) <= 80 and math.abs(y - cy) <= 36 then
+        -- 确认出战时记住敌我队伍，下次进部署界面默认选中。
+        Preferences.set("last_player_team", UI.player_id())
+        Preferences.set("last_enemy_team", UI.enemy_id())
+        return true
+    end
     return false
 end
 

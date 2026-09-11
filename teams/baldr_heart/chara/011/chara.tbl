@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/f_freja_0101ak.png"
+face_attack="face/f_freja_0101dm.png"
+face_idle="face/f_freja_0101eg.png"
+face_hit="face/f_freja_0101kr.png"
+id=011
+name=芙蕾雅
+face=face
+hit=face
+chara=chara.png
+type=11
+dialogue=dialogue.lua

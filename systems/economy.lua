@@ -104,12 +104,8 @@ function Economy.member_candidates(game)
     return out
 end
 
--- 增援机种：优先出击编队里为该角色指定的机体，其次角色 chara.tbl 的
--- 机型配置，最后从常规机种池随机。
+-- 增援机种：角色 chara.tbl 的机型配置，缺省从常规机种池随机。
 local function member_chassis(game,cid)
-    for _,entry in ipairs(require("systems.loadout").for_team(game.player_team_id or Registry.default_player())) do
-        if entry.id==cid and entry.ship then return entry.ship end
-    end
     local info=Registry.character(nil,game.player_team_id,cid)
     local tnum=info and tonumber(info.type)
     if tnum and tnum>0 then

@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/f_mao_0101no.png"
+face_attack="face/f_mao_0101ik2.png"
+face_idle="face/f_mao_0101bs2.png"
+face_hit="face/f_mao_0101aw.png"
+id=010
+name=天之濑茉绪
+face=face
+hit=face
+chara=chara.png
+type=4
+dialogue=dialogue.lua

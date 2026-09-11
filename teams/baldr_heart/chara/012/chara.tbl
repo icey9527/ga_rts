@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/f_wilhelm_0101no.png"
+face_attack="face/f_wilhelm_0101no.png"
+face_idle="face/f_wilhelm_0101no.png"
+face_hit="face/f_wilhelm_0101st.png"
+id=012
+name=威廉
+face=face
+hit=face
+chara=chara.png
+type=10
+dialogue=dialogue.lua

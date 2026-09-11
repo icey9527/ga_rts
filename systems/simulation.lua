@@ -68,9 +68,10 @@ function Sim.deploy(game,player_id,enemy_id,formation)
         local tid=team==0 and game.player_team_id or game.enemy_team_id
         local side=sides[team+1]
         local roster={{pilot=side.commander,ship="mothership"}}
-        -- 出击编队：指挥官固定母舰；作战成员按 systems/loadout 的名单
-        -- （上限 deploy_limit，未上阵角色留给增援）。随机编队无存档，全员上场。
-        local picked=require("systems.loadout").for_team(tid)
+        -- 出击编队：指挥官固定母舰；两侧各自记忆（同队不共享），
+        -- 未上阵角色留给增援。随机编队无存档，全员上场。
+        local Loadout=require("systems.loadout")
+        local picked=Loadout.for_side(team==0 and "player" or "enemy", tid)
         if #picked>0 then
             for _,entry in ipairs(picked) do
                 roster[#roster+1]={pilot={team=tid,id=entry.id},ship=entry.ship}

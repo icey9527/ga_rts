@@ -1,0 +1,12 @@
+[chara]
+face_normal="face/f_motoki_0101no.png"
+face_attack="face/f_motoki_0101ny.png"
+face_idle="face/f_motoki_0101bs.png"
+face_hit="face/f_motoki_0101sa.png"
+id=013
+name=岩永礎
+face=face
+hit=face
+chara=chara.png
+type=13
+dialogue=dialogue.lua
