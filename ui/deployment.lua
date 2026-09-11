@@ -344,22 +344,23 @@ local function draw_side(g, game, which, y0, selected)
         local m = side.members[i]
         local cx = x0 + (i - 1) * gap
         if e.selected then count = count + 1 end
-        local hot = mx >= cx - 32 and mx <= cx + 32 and my >= mem_cy - 4 and my <= mem_cy + 64
-        UI.member_hits[which][i] = { x = cx - 32, y = mem_cy - 4, w = 64, h = 68, id = e.id }
+        -- 头像保持旧版位置（中心 cx-29, mem_cy，完整落在面板内不裁剪）；
+        -- 命中框与状态框贴头像真实位置，而不是移动头像。
+        local acx, acy = cx - 29, mem_cy
+        local hot = mx >= acx - 32 and mx <= acx + 32 and my >= acy - 32 and my <= acy + 32
+        UI.member_hits[which][i] = { x = acx - 32, y = acy - 32, w = 64, h = 64, id = e.id }
         local sc = hot and (1 + 0.05 * (0.5 + 0.5 * math.sin(UI.clock * 7))) or 1
         g.push("all");g.translate(cx,mem_cy+29);g.scale(sc,flip_scale*sc);g.translate(-cx,-mem_cy-29)
-        -- draw_avatar 的 (cx,cy) 是中心点：以悬停缩放原点 (cx, mem_cy+29)
-        -- 为中心绘制，头像框 (cx±31, mem_cy-2..+60) 与状态框完全重合。
-        draw_avatar(g, m and m.team or id, e.id, cx, mem_cy+29, 58, game, mirror and 1 or 0, display_skin)
-        -- 状态标记画在悬停/翻牌变换内，与头像框（x-2,y-2,size+4）精确对齐。
+        draw_avatar(g, m and m.team or id, e.id, acx, acy, 58, game, mirror and 1 or 0, display_skin)
+        -- 状态标记画在悬停/翻牌变换内，与头像中心 (acx,acy) 对齐、外扩 2px。
         if e.selected then
             g.setColor(1,0.82,0.35,0.95); g.setLineWidth(2.5)
-            g.rectangle("line", cx-31, mem_cy-2, 62, 62, 8, 8)
+            g.rectangle("line", acx-31, acy-31, 62, 62, 8, 8)
         else
             g.setColor(0.01,0.02,0.04,0.62)
-            g.rectangle("fill", cx-31, mem_cy-2, 62, 62, 8, 8)
+            g.rectangle("fill", acx-31, acy-31, 62, 62, 8, 8)
             g.setColor(0.45,0.5,0.55,0.8); g.setLineWidth(1.5)
-            g.rectangle("line", cx-31, mem_cy-2, 62, 62, 8, 8)
+            g.rectangle("line", acx-31, acy-31, 62, 62, 8, 8)
         end
         g.pop()
     end
