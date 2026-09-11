@@ -601,7 +601,7 @@ function love.mousepressed(mx, my, button)
     end
 
     if game_state ~= "playing" then return end
-    if command_mode=="normal" and button==1 and EconomyPanel.click(game,mx,my) then return end
+    if command_mode=="normal" and EconomyPanel.click(game,mx,my,button) then return end
     if command_mode=="normal" and EconomyPanel.contains(game,mx,my) then return end
     if Mission.contains(game,mx,my) then if button==1 then Mission.advance(game) end;return end
 

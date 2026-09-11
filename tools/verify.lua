@@ -158,6 +158,17 @@ function Verify.run()
     assert(e.units[#e.units].tech_armor==1,"new production inherits technology")
     assert(Economy.enqueue(e,"collector")); Economy.update(e,25)
     assert(e.units[#e.units].unit_type=="collector","station construction")
+    -- 阵营增援：指定角色入队、完成后该角色上场；候选池不含场上角色（不抽随机池）。
+    local candidates=Economy.member_candidates(e)
+    assert(#candidates>0,"faction has reinforcement candidates")
+    local pick=candidates[1]
+    assert(Economy.enqueue(e,"member",pick))
+    local job=e.economy.queue[#e.economy.queue]
+    assert(job and job.character==pick,"member job carries the chosen character")
+    local before=#e.units
+    Economy.update(e,15)
+    assert(#e.units==before+1 and e.units[#e.units].character_id==pick,"member reinforcement spawns the chosen character")
+    for _,c in ipairs(Economy.member_candidates(e)) do assert(c~=pick,"on-field character leaves candidate pool") end
     local credits=e.economy.credits
     Economy.update(e,1)
     -- 基础收入 9/s，加上采集站 8/s。
@@ -230,6 +241,11 @@ function Verify.run()
         local exercise=Game.new()
         assert(levels.load_level("level_01.tbl",exercise))
         require("systems.simulation").deploy(exercise,choice==1 and "rune" or "moon",choice==1 and "moon" or "rune","spread")
+        local deployed=0
+        for _,actor in ipairs(exercise:get_units_by_team(exercise.player_team)) do
+            if actor.unit_type~="mothership" then deployed=deployed+1 end
+        end
+        assert(deployed>0 and deployed<=require("systems.loadout").limit(),"deploy respects member cap")
         local seen={}
         for _,actor in ipairs(exercise.units) do
             assert(not seen[actor.character_id],"simulation has unique pilots")

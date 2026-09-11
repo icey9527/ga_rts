@@ -9,6 +9,8 @@ local Gameplay = {
     energy_repair_cost = 3,
     fighter_auto_range = 2200,
     ai_lock_range = 2800,
+    -- 出击编队上限：作战成员数（指挥官母舰不占名额），未上阵角色进增援池。
+    deploy_limit = 7,
 }
 
 function Gameplay.apply_overrides(section)

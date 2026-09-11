@@ -9,6 +9,7 @@ return {
         queue_full="队列已经排满。先让现有项目完成。",
         tech_max="该项研究已经达到设计上限。",
         no_credits="资源不足。暂时无法执行这项调配。",
+        no_member="没有可增援的队员——全员都在场上。",
         queued=" 已排入队列。",
         cancel="项目取消，资源已退回。",
         mineral_refund="矿脉已经占用，建设资源退回。",

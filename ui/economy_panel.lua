@@ -2,6 +2,15 @@ local Panel={}
 local config=require("config.economy")
 local Economy=require("systems.economy")
 local Fonts=require("core.fonts")
+
+-- 当前的增援候选（面板显示与入队共用同一计算，保证所见即所召）。
+local function member_candidate(game)
+    local candidates=Economy.member_candidates(game)
+    if #candidates==0 then return nil end
+    local e=game.economy or {}
+    return candidates[((e.member_index or 1)-1)%#candidates+1]
+end
+
 function Panel.bounds()
     return love.graphics.getWidth()-264,72,252,math.min(510,love.graphics.getHeight()-252)
 end
@@ -17,10 +26,21 @@ function Panel.contains(game,mx,my)
     local x,y,w,h=Panel.bounds()
     return game.economy and game.economy.open and mx>=x and mx<=x+w and my>=y and my<=y+h
 end
-function Panel.click(game,mx,my)
+function Panel.click(game,mx,my,button)
     local e=game.economy
     if not e then return false end
     local x,y,w,h=Panel.bounds()
+    -- 右键只用于增援行换人；其余交互均为左键。
+    if button==2 then
+        if not Panel.contains(game,mx,my) then return false end
+        local items=entries(game)
+        local i=math.floor((my-y-76)/46)+1
+        if my>=y+76 and i>=1 and i<=#items and items[i].id=="member" then
+            e.member_index=(e.member_index or 1)+1
+            return true
+        end
+        return false
+    end
     if mx>=x and mx<=x+w and my>=34 and my<68 then Economy.toggle(game); return true end
     if not Panel.contains(game,mx,my) then return false end
     if my<y+36 then
@@ -38,7 +58,12 @@ function Panel.click(game,mx,my)
     end
     local items=entries(game)
     local i=math.floor((my-y-76)/46)+1
-    if my>=y+76 and i>=1 and i<=#items then Economy.enqueue(game,items[i].id); return true end
+    if my>=y+76 and i>=1 and i<=#items then
+        local a=items[i]
+        if a.id=="member" then Economy.enqueue(game,"member",member_candidate(game))
+        else Economy.enqueue(game,a.id) end
+        return true
+    end
     local qy=y+80+#items*46
     if my>=qy then Economy.cancel(game,math.floor((my-qy)/28)+1) end
     return true
@@ -72,9 +97,22 @@ function Panel.draw(game)
             g.setColor(0.3,0.43,0.46,0.5); g.line(x+10,by+42,x+w-10,by+42)
             g.setColor(e.credits>=a.cost and 0.9 or 0.5,0.85,0.75,1)
             local level=a.tech and (" "..e[a.id].."/"..a.max) or ""
-            g.print(a.label..level,x+12,by+3)
+            local label=a.label..level
+            if a.id=="member" then
+                local cid=member_candidate(game)
+                if cid then
+                    label=a.label.."："..(require("ui.pilots").profile(
+                        {character_id=cid,team_id=game.player_team_id}).name or "?")
+                else
+                    label=a.label.."：全员在场"
+                end
+            end
+            g.print(label,x+12,by+3)
             g.setColor(0.55,0.7,0.75,1); g.print(a.cost.." 资源 / "..a.time.." 秒",x+12,by+23)
             g.setColor(0.7,0.9,0.85,1); g.print("+",x+w-25,by+10)
+            if a.id=="member" then
+                g.setColor(0.5,0.65,0.7,0.9); g.print("右键换人",x+w-88,by+23)
+            end
         end
         local qy=y+80+#items*46
         if e.tab=="build" then
@@ -87,7 +125,13 @@ function Panel.draw(game)
             if by+25<y+h then
                 g.setColor(0.18,0.35,0.37,1); g.rectangle("fill",x+10,by,w-20,24)
                 g.setColor(0.32,0.63,0.56,1); g.rectangle("fill",x+10,by,(w-20)*(1-job.remaining/job.action.time),24)
-                g.setColor(0.95,0.96,0.9,1); g.print(job.action.label.." "..math.ceil(job.remaining).."秒",x+14,by+5);g.print("×",x+w-25,by+4)
+                g.setColor(0.95,0.96,0.9,1)
+                local label=job.action.label
+                if job.character then
+                    label=label.."·"..(require("ui.pilots").profile(
+                        {character_id=job.character,team_id=game.player_team_id}).name or "?")
+                end
+                g.print(label.." "..math.ceil(job.remaining).."秒",x+14,by+5);g.print("×",x+w-25,by+4)
             end
         end
     end

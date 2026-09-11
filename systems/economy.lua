@@ -83,7 +83,44 @@ function Economy.apply(game,u)
         u:_recalc_stats()
     end
 end
-function Economy.enqueue(game,id)
+-- 增援候选：本阵营花名册中未在场且未在队列的角色（阵亡角色可再召唤，
+-- 不再从随机池抽取）。返回按花名册顺序的 character_id 列表。
+function Economy.member_candidates(game)
+    local team_id=game.player_team_id or Registry.default_player()
+    local cfg=Registry.load(team_id).team or {}
+    local commander=tonumber(cfg.commander)
+    local busy={}
+    for _,u in ipairs(game.units) do
+        if u.alive and u.team==game.player_team and u.character_id then busy[u.character_id]=true end
+    end
+    for _,job in ipairs((game.economy and game.economy.queue) or {}) do
+        if job.character then busy[job.character]=true end
+    end
+    local out={}
+    for _,cid in ipairs(cfg.chara or {}) do
+        cid=tonumber(cid)
+        if cid and cid~=commander and not busy[cid] then out[#out+1]=cid end
+    end
+    return out
+end
+
+-- 增援机种：优先出击编队里为该角色指定的机体，其次角色 chara.tbl 的
+-- 机型配置，最后从常规机种池随机。
+local function member_chassis(game,cid)
+    for _,entry in ipairs(require("systems.loadout").for_team(game.player_team_id or Registry.default_player())) do
+        if entry.id==cid and entry.ship then return entry.ship end
+    end
+    local info=Registry.character(nil,game.player_team_id,cid)
+    local tnum=info and tonumber(info.type)
+    if tnum and tnum>0 then
+        local ship=require("config.ship_types")[tnum]
+        if ship and ship~="-1" then return ship end
+    end
+    local pool={"fighter","light","sniper","interceptor","repair","artillery","tiger"}
+    return pool[math.random(#pool)]
+end
+
+function Economy.enqueue(game,id,character)
     local e=game.economy
     if not e then return false end
     if not game:get_mothership(game.player_team) then Economy.say(game,"halt","failed"); return false end
@@ -98,11 +135,26 @@ function Economy.enqueue(game,id)
     end
     if #e.queue>=config.max_queue then Economy.say(game,"queue_full","failed"); return false end
     local pending=0
-    for _,job in ipairs(e.queue) do if job.action.id==id then pending=pending+1 end end
+    for _,job in ipairs(e.queue) do if job.action.id==id then pending=pending+1 end
+        if job.character and job.character==character then Economy.say(game,"queue_full","failed"); return false end end
     if action.tech and e[id]+pending>=action.max then Economy.say(game,"tech_max","failed"); return false end
     if e.credits<action.cost then Economy.say(game,"no_credits","failed"); return false end
+    local job_entry={action=action,remaining=action.time}
+    if id=="member" then
+        local cid=character
+        if not cid then
+            local candidates=Economy.member_candidates(game)
+            if #candidates==0 then Economy.say(game,"no_member","failed"); return false end
+            cid=candidates[((e.member_index or 1)-1)%#candidates+1]
+        else
+            local allowed=false
+            for _,c in ipairs(Economy.member_candidates(game)) do if c==cid then allowed=true;break end end
+            if not allowed then Economy.say(game,"no_member","failed"); return false end
+        end
+        job_entry.character=cid
+    end
     e.credits=e.credits-action.cost
-    e.queue[#e.queue+1]={action=action,remaining=action.time}
+    e.queue[#e.queue+1]=job_entry
     require("systems.advisor").event(game,action.tech and "research" or (id=="collector" and "collect" or "recruit"))
     Economy.say(game,"queued",nil,action.label)
     return true
@@ -140,6 +192,33 @@ function Economy.update(game,dt)
         require("systems.audio").play("build")
     else
         local kind=a.unit
+        if kind=="member" then
+            -- 队员增援：完成时若该角色已上场则退款；机种按编队/角色配置。
+            local cid=job.character
+            local on_field
+            for _,u in ipairs(game.units) do
+                if u.alive and u.team==game.player_team and u.character_id==cid then on_field=true;break end
+            end
+            if not cid or on_field then
+                e.credits=e.credits+a.cost
+                table.remove(e.queue,1)
+                Economy.say(game,"no_member","failed")
+                return
+            end
+            local chassis=member_chassis(game,cid)
+            local cfg=require("levels.manager").unit_config(chassis)
+            local angle=(game.next_unit_id or 0)*2.39996
+            local x,y=game:find_clear_position(ms.x+math.cos(angle)*230,ms.y+math.sin(angle)*230,30)
+            if game:is_position_blocked(x,y,30,0) then job.remaining=1; return end
+            local u=require("entities.unit").new(x,y,game.player_team,cfg)
+            u.character_id=cid
+            game:add_unit(u)
+            require("systems.audio").play("reinforce")
+            require("systems.cinematic").reinforcement(game,u)
+            table.remove(e.queue,1)
+            Economy.say(game,"done","praise",a.label)
+            return
+        end
         if kind=="random" then
             local pool={"light","sniper","artillery","tiger","fighter","repair"}
             kind=pool[math.random(#pool)]
@@ -154,7 +233,8 @@ function Economy.update(game,dt)
         if node then x,y=node.x,node.y end
         if game:is_position_blocked(x,y,30,0) then job.remaining=1; return end
         local u=require("entities.unit").new(x,y,game.player_team,cfg)
-        -- 地图内同一角色只出现一次：优先从本单位阵营队伍与混池中选未上场驾驶员。
+        -- 指定机型生产（战机/维修机）与采集站沿用阵营花名册补驾驶员：
+        -- 优先未上场角色，全部在场时允许复用（保持生产行为不变）。
         local Pilots=require("ui.pilots")
         local pool=Pilots.team_pool({game.player_team_id or Registry.default_player(),"default"})
         local used={}

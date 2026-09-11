@@ -5,4 +5,4 @@ commander=020
 left=021
 right=026
 chara={010,011,012,013,014,015}
-bgm=bgm/battle.ogg
+bgm=bgm/BGM_S10.mp3

@@ -5,6 +5,7 @@ local Fonts = require("core.fonts")
 local Pilots = require("ui.pilots")
 local Registry = require("systems.pack_registry")
 local Preferences = require("systems.preferences")
+local Loadout = require("systems.loadout")
 local SHOW_H = 340
 local skins_for
 local skin_label
@@ -21,17 +22,74 @@ end
 function UI.list()
     if not UI._list then
         local ok, ids = pcall(Registry.playable_ids)
-        local filtered = (ok and type(ids) == "table") and ids or {}
-        if #filtered == 0 then filtered[1] = "random" end
-        for i=#filtered,1,-1 do if filtered[i]=="random" then table.remove(filtered,i) end end
-        filtered[#filtered + 1] = "random"  -- 随机永远排在最末尾
-        UI._list = filtered
+        -- 随机混池已废弃：选人界面只列真实队伍（增援也只从本阵营召唤）。
+        UI._list = (ok and type(ids) == "table" and #ids > 0) and ids or {"random"}
     end
     return UI._list
 end
 
+-- 队员行数据：花名册顺序 + 上阵标记（从编队存档初始化，点击切换并即时保存）。
+-- 返回 { {id=, ship=, selected=} }；随机编队全部视为已选。
+function UI.team_entries(id)
+    if not UI._entries then UI._entries = {} end
+    local cached = UI._entries[id]
+    if cached then return cached end
+    local side = side_display(id)
+    local entries = {}
+    if id == "random" then
+        for _, m in ipairs(side.members) do entries[#entries + 1] = { id = m.id, selected = true } end
+    else
+        local selected, ship = {}, {}
+        for _, entry in ipairs(Loadout.for_team(id)) do
+            selected[entry.id] = true
+            ship[entry.id] = entry.ship
+        end
+        for _, m in ipairs(side.members) do
+            entries[#entries + 1] = { id = m.id, ship = ship[m.id], selected = selected[m.id] or false }
+        end
+    end
+    UI._entries[id] = entries
+    return entries
+end
+
+function UI.selected_count(id)
+    local n = 0
+    for _, e in ipairs(UI.team_entries(id)) do
+        if e.selected then n = n + 1 end
+    end
+    return n
+end
+
+function UI.toggle_member(id, cid)
+    if id == "random" then return false end
+    local entries = UI.team_entries(id)
+    local target
+    for _, e in ipairs(entries) do
+        if e.id == cid then target = e break end
+    end
+    if not target then return false end
+    if target.selected then
+        target.selected = false
+    elseif UI.selected_count(id) < Loadout.limit() then
+        target.selected = true
+    else
+        UI.limit_flash = { team = id, expiry = UI.clock + 1.4 }
+        return false
+    end
+    -- 按当前显示顺序保存（保留机型记录）
+    local save = {}
+    for _, e in ipairs(entries) do
+        if e.selected then save[#save + 1] = { id = e.id, ship = e.ship } end
+    end
+    Loadout.set_team(id, save)
+    return true
+end
+
 function UI.reset()
     UI._list = nil
+    UI._entries = nil
+    UI.member_hits = nil
+    UI.limit_flash = nil
     UI.player, UI.enemy, UI.bar = 1, 2, "player"
     skin_fx = {player={time=0,old=nil,new=nil,current=nil}, enemy={time=0,old=nil,new=nil,current=nil}}
     UI.anim = {player={at=-10,dir=1}, enemy={at=-10,dir=1}}
@@ -266,16 +324,45 @@ local function draw_side(g, game, which, y0, selected)
     g.push("all");g.translate(rx,off_y+95);g.scale(right_scale,flip_scale*right_scale);g.translate(-rx,-off_y-95)
     draw_portrait_card(g, which, rx - 85, off_y, 170, 190, "右手", side.right, id == "random", slide, flash, display_skin);g.pop()
 
+    -- 队员行：全部成员按花名册排列；金色描边=上阵，暗化=增援池，点击切换。
+    local entries = UI.team_entries(id)
     local gap = 74
-    local x0 = commander_cx - (#side.members - 1) * gap / 2 + slide
-    for i, m in ipairs(side.members) do
-        -- 队员一律按原始顺序从左往右排列
-        local cx=x0+(i-1)*gap; local h=has_skin and mx>=cx-32 and mx<=cx+32 and my>=mem_cy-4 and my<=mem_cy+64
-        skin_hit[which..":member"..i]=has_skin and {team=id,x=cx-32,y=mem_cy-4,w=64,h=68} or nil
-        local sc=h and (1+0.035*(0.5+0.5*math.sin(UI.clock*7))) or 1
+    local x0 = commander_cx - (#entries - 1) * gap / 2 + slide
+    UI.member_hits = UI.member_hits or {}
+    UI.member_hits[which] = {}
+    local count = 0
+    for i, e in ipairs(entries) do
+        local m = side.members[i]
+        local cx = x0 + (i - 1) * gap
+        if e.selected then count = count + 1 end
+        local hot = mx >= cx - 32 and mx <= cx + 32 and my >= mem_cy - 4 and my <= mem_cy + 64
+        UI.member_hits[which][i] = { x = cx - 32, y = mem_cy - 4, w = 64, h = 68, id = e.id }
+        local sc = hot and (1 + 0.05 * (0.5 + 0.5 * math.sin(UI.clock * 7))) or 1
         g.push("all");g.translate(cx,mem_cy+29);g.scale(sc,flip_scale*sc);g.translate(-cx,-mem_cy-29)
-        draw_avatar(g, m.team, m.id, cx-29, mem_cy, 58, game, mirror and 1 or 0, display_skin);g.pop()
+        draw_avatar(g, m and m.team or id, e.id, cx-29, mem_cy, 58, game, mirror and 1 or 0, display_skin);g.pop()
+        if e.selected then
+            g.setColor(1,0.82,0.35,0.95); g.setLineWidth(2.5)
+            g.rectangle("line", cx-31, mem_cy-3, 62, 66, 8, 8)
+        else
+            g.setColor(0.01,0.02,0.04,0.62)
+            g.rectangle("fill", cx-31, mem_cy-3, 62, 66, 8, 8)
+            g.setColor(0.45,0.5,0.55,0.8); g.setLineWidth(1.5)
+            g.rectangle("line", cx-31, mem_cy-3, 62, 66, 8, 8)
+        end
     end
+    -- 上阵计数（满员时闪烁提示）；皮肤循环不再挂队员头像，只保留三张卡片。
+    local flash = UI.limit_flash and UI.limit_flash.team == id and UI.clock < UI.limit_flash.expiry
+    local label = string.format("上阵 %d/%d", count, Loadout.limit())
+    g.setFont(Fonts.get(15))
+    if flash then
+        g.setColor(1,0.35,0.3,0.6+0.4*math.sin(UI.clock*18))
+        label = label.."  已满员，先撤下一人"
+    else
+        g.setColor(1,0.9,0.6,0.9)
+    end
+    if which == "player" then g.print(label, 34, y0 + 40)
+    else g.printf(label, w - 34 - 420, y0 + 8, 420, "right") end
+    g.setColor(1, 1, 1, 1)
 
     g.pop()
     -- 队伍切换箭头仍属于编队选择，不与皮肤卡片交互混用。
@@ -398,6 +485,16 @@ function UI.click(x, y)
     local click_side
     if y >= show_y("player") and y < show_y("player") + SHOW_H then click_side="player"
     elseif y >= show_y("enemy") and y < show_y("enemy") + SHOW_H then click_side="enemy" end
+    -- 队员头像：点击切换上阵/增援池（两侧都可编辑，立即保存编队）。
+    if click_side and UI.member_hits and UI.member_hits[click_side] then
+        for _, hit in ipairs(UI.member_hits[click_side]) do
+            if x >= hit.x and x <= hit.x + hit.w and y >= hit.y and y <= hit.y + hit.h then
+                local id = UI.list()[click_side == "player" and UI.player or UI.enemy]
+                UI.toggle_member(id, hit.id)
+                return false
+            end
+        end
+    end
     for _,which in ipairs({"player","enemy"}) do
         if click_side and which ~= click_side then goto continue_click_side end
         local id=UI.list()[which=="player" and UI.player or UI.enemy]
@@ -409,14 +506,6 @@ function UI.click(x, y)
             local hit = (x >= cx-95 and x <= cx+95 and y >= cmd_y and y <= cmd_y+250)
                 or (x >= lx-85 and x <= lx+85 and y >= off_y and y <= off_y+190)
                 or (x >= rx-85 and x <= rx+85 and y >= off_y and y <= off_y+190)
-            local side = side_display(id)
-            local mem_cy = which == "player" and y0 + SHOW_H - 36 or y0 + 36
-            local gap = 74
-            local x0 = cx - (#side.members - 1) * gap / 2
-            for i = 1, #side.members do
-                local mc = x0 + (i - 1) * gap
-                if x >= mc - 32 and x <= mc + 32 and y >= mem_cy - 4 and y <= mem_cy + 64 then hit = true break end
-            end
             if hit then
                 if not skin_fx[which] or skin_fx[which].time <= 0 then UI.cycle_skin(id, 1, which) end
                 return false
