@@ -14,7 +14,8 @@ local TETROMINOES = {
     {{0,0},{1,0},{1,1},{2,1}},          -- Z
 }
 
--- 头像池：teams/<队>/chara/<ID>/face/*.png
+-- 头像池：teams/<队>/chara/<ID>/face 下**仅默认表情**（语义码 _0000）。
+-- 表情变体不进拼图——表情系统重构（计划 14）后再考虑动态版。
 local function avatar_paths()
     local out = {}
     local ok, teams = pcall(love.filesystem.getDirectoryItems, "teams")
@@ -28,7 +29,7 @@ local function avatar_paths()
                 local okf, files = pcall(love.filesystem.getDirectoryItems, fdir)
                 if okf then
                     for _, f in ipairs(files) do
-                        if f:match("%.png$") or f:match("%.jpg$") then
+                        if f:match("%.png$") and f:find("_0000", 1, true) then
                             out[#out + 1] = fdir .. "/" .. f
                         end
                     end
@@ -116,8 +117,14 @@ function Mosaic.get()
     return canvas
 end
 
--- 每次进入主菜单调用：重建随机拼图（无头像池时保持 nil，回落纯色底）。
+-- 每次启动只随机一次（同一局内布局稳定，不随进出主菜单变化）；
+-- 仅当画布尺寸与窗口不一致（ resize ）时重建。动态下沉式背景
+-- 属表情/立绘系统重构（计划 14）后的工作，暂不实现。
 function Mosaic.refresh()
+    if canvas and canvas:getWidth() == love.graphics.getWidth()
+        and canvas:getHeight() == love.graphics.getHeight() then
+        return
+    end
     canvas = Mosaic.build()
 end
 

@@ -30,60 +30,6 @@ end
 
 -- 队员行数据：花名册顺序 + 上阵标记（从编队存档初始化，点击切换并即时保存）。
 -- 返回 { {id=, ship=, selected=} }；随机编队全部视为已选。
-function UI.team_entries(id)
-    if not UI._entries then UI._entries = {} end
-    local cached = UI._entries[id]
-    if cached then return cached end
-    local side = side_display(id)
-    local entries = {}
-    if id == "random" then
-        for _, m in ipairs(side.members) do entries[#entries + 1] = { id = m.id, selected = true } end
-    else
-        local selected, ship = {}, {}
-        for _, entry in ipairs(Loadout.for_team(id)) do
-            selected[entry.id] = true
-            ship[entry.id] = entry.ship
-        end
-        for _, m in ipairs(side.members) do
-            entries[#entries + 1] = { id = m.id, ship = ship[m.id], selected = selected[m.id] or false }
-        end
-    end
-    UI._entries[id] = entries
-    return entries
-end
-
-function UI.selected_count(id)
-    local n = 0
-    for _, e in ipairs(UI.team_entries(id)) do
-        if e.selected then n = n + 1 end
-    end
-    return n
-end
-
-function UI.toggle_member(id, cid)
-    if id == "random" then return false end
-    local entries = UI.team_entries(id)
-    local target
-    for _, e in ipairs(entries) do
-        if e.id == cid then target = e break end
-    end
-    if not target then return false end
-    if target.selected then
-        target.selected = false
-    elseif UI.selected_count(id) < Loadout.limit() then
-        target.selected = true
-    else
-        UI.limit_flash = { team = id, expiry = UI.clock + 1.4 }
-        return false
-    end
-    -- 按当前显示顺序保存（保留机型记录）
-    local save = {}
-    for _, e in ipairs(entries) do
-        if e.selected then save[#save + 1] = { id = e.id, ship = e.ship } end
-    end
-    Loadout.set_team(id, save)
-    return true
-end
 
 function UI.reset()
     UI._list = nil
@@ -194,6 +140,61 @@ local function side_display(side_id)
         right = {team = side_id, id = tonumber(cfg.right)},
         members = members,
     }
+end
+
+function UI.team_entries(id)
+    if not UI._entries then UI._entries = {} end
+    local cached = UI._entries[id]
+    if cached then return cached end
+    local side = side_display(id)
+    local entries = {}
+    if id == "random" then
+        for _, m in ipairs(side.members) do entries[#entries + 1] = { id = m.id, selected = true } end
+    else
+        local selected, ship = {}, {}
+        for _, entry in ipairs(Loadout.for_team(id)) do
+            selected[entry.id] = true
+            ship[entry.id] = entry.ship
+        end
+        for _, m in ipairs(side.members) do
+            entries[#entries + 1] = { id = m.id, ship = ship[m.id], selected = selected[m.id] or false }
+        end
+    end
+    UI._entries[id] = entries
+    return entries
+end
+
+function UI.selected_count(id)
+    local n = 0
+    for _, e in ipairs(UI.team_entries(id)) do
+        if e.selected then n = n + 1 end
+    end
+    return n
+end
+
+function UI.toggle_member(id, cid)
+    if id == "random" then return false end
+    local entries = UI.team_entries(id)
+    local target
+    for _, e in ipairs(entries) do
+        if e.id == cid then target = e break end
+    end
+    if not target then return false end
+    if target.selected then
+        target.selected = false
+    elseif UI.selected_count(id) < Loadout.limit() then
+        target.selected = true
+    else
+        UI.limit_flash = { team = id, expiry = UI.clock + 1.4 }
+        return false
+    end
+    -- 按当前显示顺序保存（保留机型记录）
+    local save = {}
+    for _, e in ipairs(entries) do
+        if e.selected then save[#save + 1] = { id = e.id, ship = e.ship } end
+    end
+    Loadout.set_team(id, save)
+    return true
 end
 
 -- ==========================================

@@ -268,9 +268,6 @@ function Pilots.line(unit,kind,fallback)
         return ({ready="特殊装备已就绪，等待指令。",interaction="航向又变了吗？请留一点时间完成机动。",follow="已经跟上。这段航路一起走吧。",follow_reply="收到，我会留出安全间距。",follow_start="收到，开始跟随。",follow_continue="保持这个间距，继续前进。",follow_end="跟随结束，恢复自主行动。",camera_follow_start="镜头锁定，正在跟随。",camera_follow_continue="保持航向，继续观察。",camera_follow_end="镜头跟随结束。",formation_follow_start="收到跟随命令。",formation_follow_continue="保持编队间距。",formation_follow_end="跟随命令结束。"})[kind]
     end
     local list=dialogue and dialogue[side] and dialogue[side][kind]
-    if not list and side=="friendly" and love.filesystem.getInfo("units/"..unit.unit_type.."/dialogue.lua") then
-        list=require("units."..unit.unit_type..".dialogue")[kind]
-    end
     if side=="enemy" and not list then return nil end
     if not list then
         local defaults={command="指令确认，正在执行。",attack="目标确认，开始攻击。",hit="机体受损，请求修理。",energy="能量不足，准备返航补给。",supplied="补给完成，重新加入战斗。",return_battle="重返战场，继续攻击。",repair_done="维修完成，目标机体可以继续作战。",lost="通讯中断……",failed="目标无效，请重新指定。",skill="特殊装备启动。",idle="正在监视周边空域。",praise="目标已击破，保持警戒。"}
