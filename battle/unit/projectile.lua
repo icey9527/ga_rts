@@ -34,7 +34,8 @@ function Projectile.spawn(unit,game,target,index,total,weapon)
     if kind=="beam" then
         local dealt=target:take_damage(dmg,unit)
         if unit and dealt and dealt>0 then
-            unit.sp=math.min(unit.max_sp,unit.sp+dealt*require("config.pacing").sp_per_damage_dealt)
+            local pacing=require("config.pacing")
+            unit.sp=math.min(unit.max_sp,unit.sp+dealt*pacing.sp_per_damage_dealt+(pacing.sp_per_hit or 0))
         end
         game:add_effect(require("entities.effect").beam(unit.x,unit.y-(unit.z or 0)*0.22,target.x,target.y-(target.z or 0)*0.22))
     elseif kind=="missile" then

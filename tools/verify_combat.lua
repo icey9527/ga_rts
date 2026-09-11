@@ -166,7 +166,7 @@ function Test.run()
         local shot=Projectile.basic(0,0,300,0,100,5000,victim,0,"main_gun",shooter)
         while shot:update(1/60,g) do end
         assert(victim.hp==victim.max_hp-100 and shooter.sp>0,"damage dealt charges SP")
-        assert(math.abs(shooter.sp-100*pacing.sp_per_damage_dealt)<1e-9,"dealt SP uses pacing rate")
+        assert(math.abs(shooter.sp-(100*pacing.sp_per_damage_dealt+(pacing.sp_per_hit or 0)))<1e-9,"dealt SP uses pacing rates")
         assert(math.abs(victim.sp-100*pacing.sp_per_damage_taken)<1e-9,"taken SP uses pacing rate")
         local sp_before=shooter.sp
         local keeper=Unit.new(300,0,1,{max_hp=100000})

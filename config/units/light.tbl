@@ -5,7 +5,7 @@ name = "轻快型战机"
 max_hp = 260
 max_energy = 160
 speed = 205
-attack_damage = 8
+attack_damage = 10
 attack_range = 330
 attack_cooldown = 0.25
 attack_type = "ranged"
@@ -22,6 +22,7 @@ radius = 250
 duration = 8
 
 [behavior]
+cut_pass_when_ready = true
 break_distance = 120
 reposition_distance = 150
 reposition_angle = 0.9

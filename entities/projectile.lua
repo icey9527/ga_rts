@@ -158,12 +158,13 @@ function P:update(dt, game)
     return true
 end
 
--- 命中结算：普通弹药按实际造成的伤害给施放者回充 SP（pacing.sp_per_damage_dealt）。
+-- 命中结算：普通弹药按实际造成的伤害 + 命中小额回充给施放者 SP。
 -- 技能弹药带 no_sp 标记，防止必杀伤害自充形成循环。
 local function credit_sp(source, dealt)
     if source and dealt and dealt > 0 then
+        local pacing = require("config.pacing")
         source.sp = math.min(source.max_sp or 100, (source.sp or 0)
-            + dealt * require("config.pacing").sp_per_damage_dealt)
+            + dealt * pacing.sp_per_damage_dealt + (pacing.sp_per_hit or 0))
     end
 end
 
